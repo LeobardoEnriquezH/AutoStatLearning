@@ -1,1 +1,1 @@
-# AutoLearning
+# Automated Statistical Learning
