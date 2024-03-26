@@ -44,7 +44,7 @@ pacman::p_load(tidyverse,
 ```
 
 
-## Regresión lineal múltiple.
+## 1. Regresión lineal múltiple.
 
 La base de datos Preg1B.csv contiene información sobre 295 pacientes seleccionados de forma aleatoria. Se desea analizar si existe una asociación entre la presión arterial sistólica (bpsystol) y el índice de masa corporal (bmi), en particular, si es posible observar que tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica. Para realizar este análisis se indica que se considere el sexo (sex: 1-hombre, 2-mujer) y la edad (age) de los pacientes, pues la presión arterial sistólica podría variar de acuerdo con estos factores. 
 
@@ -67,7 +67,7 @@ iv. Para complementar la interpretación de los resultados del inciso iii), pres
 ### iv) Gráfica resumen con la estimación puntual de la relación bpsystol y bmi. 
 
 
-## Modelos lineales generalizados para datos continuos
+## 2. Modelos lineales generalizados para datos continuos
 
 Considere los mismos datos que en la pregunta 1, la base de datos Preg1B.csv con información sobre 295 pacientes seleccionados de forma aleatoria. Se desea analizar si existe una asociación entre la presión arterial sistólica (bpsystol) y el índice de masa corporal (bmi), considerando el sexo (sex: 1-hombre, 2-mujer) y la edad (age) de los pacientes.
 
@@ -92,7 +92,7 @@ iii. Comparando el modelo en i) con el usado en la pregunta 1, compare las concl
 
 
 
-## Modelos lineales generalizados para datos binarios
+## 3. Modelos lineales generalizados para datos binarios
 
 La base de datos Preg3B.csv contiene información sobre 862 insectos que fueron expuestos a diferentes dosis (Deposit, mg) de tres insecticidas (Insecticide). La asignación a una dosis y al tipo de insecticida se realizó de forma aleatoria. Después de seis días se analizó si los insectos se habían muerto, de manera que la base de datos contiene también el número de insectos muertos (Killed) y el número total de insectos expuestos (Number) por cada dosis e insecticida. Dado que se asume que el costo de los insecticidas es el mismo, el objetivo del análisis es identificar para cada insecticida qué dosis es la mínima con la que se puede indicar que el 70% de los insectos se muere, así como si considerando la menor de esas tres dosis se puede afirmar que un insecticida es el mejor comparado con el resto.
 
@@ -135,7 +135,7 @@ d. En general ¿se puede indicar que los insecticidas A y B tienen un desempeño
 
 
 
-## Modelos lineales generalizados para datos de conteos
+## 4. Modelos lineales generalizados para datos de conteos
 
 La base de datos Preg4.csv contiene información sobre el número de casos de cáncer de pulmón (Cases) registrados entre 1968 y 1971 en cuatro cuidades de Dinamarca (City). En estos casos se registró también la edad de los pacientes (Age, variable categorizada en 5 grupos). El interés del análisis es estudiar si se puede indicar que a mayor edad existe mayor incidencia de cáncer de pulmón. Notemos que para realizar el análisis la variable de conteos Cases depende de forma inherente de la población de la ciudad (Pop), pues entre más grande la ciudad es mayor el número de casos que se pueden observar; de manera que el estudio se debe enfocar en las tasas de incidencia.
 
@@ -167,7 +167,7 @@ iv. Opcional (1 punto) Los incisos anteriores usaron a la variable Age como cate
 
 
 
-## Modelos lineales generalizados para datos categóricos
+## 5. Modelos lineales generalizados para datos categóricos
 
 
 La base de datos Preg5.csv contiene información sobre el nivel de satisfacción (Sat) de un conjunto de individuos que rentan una vivienda. El interés es identificar si entre los factores que definen este nivel están: el tipo de vivienda (Type), la percepción sobre su influencia en las decisiones sobre el mantenimiento de la vivienda (Infl) y el contacto que tienen con el resto de inquilinos (Cont).

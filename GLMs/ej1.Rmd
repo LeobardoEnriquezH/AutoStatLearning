@@ -1,0 +1,35 @@
+---
+title: "Ejercicio 1"
+author: "Equipo"
+date: "2024-03-26"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Regresión lineal múltiple.
+
+La base de datos Preg1B.csv contiene información sobre 295 pacientes seleccionados de forma aleatoria. Se desea analizar si existe una asociación entre la presión arterial sistólica (bpsystol) y el índice de masa corporal (bmi), en particular, si es posible observar que tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica. Para realizar este análisis se indica que se considere el sexo (sex: 1-hombre, 2-mujer) y la edad (age) de los pacientes, pues la presión arterial sistólica podría variar de acuerdo con estos factores. 
+
+i. Ajuste el modelo de regresión lineal múltiple para E(bpsystol; bmi, sex, age), donde las variables bmi y age entran sin modificación alguna y sin interacciones entre ellas ni con la variable sex. Indique si este modelo parece adecuado para realizar el análisis solicitado. En caso afirmativo, pase a inciso iii).
+
+ii. En caso de que considere que el modelo en i) no es adecuado, presente un modelo que le parezca adecuado, donde de ser necesario se transformen las variables bpsystol, bmi o age. Por simplicidad no considere en el modelo interacciones entre las variables. Tanto en i) como en este inciso, revisar la linealidad de forma global y también analizando por cada covariable continua.
+
+
+iii. ¿Se puede indicar que para una persona de cierta edad y sexo, tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica? Argumente su respuesta, indicando con claridad la prueba o pruebas de hipótesis usadas y las hipótesis que se están contrastando.
+
+iv. Para complementar la interpretación de los resultados del inciso iii), presente una gráfica resumen con la estimación puntual asociada a la relación entre bpsystol y bmi. Para esto considere sólo tres posibles edades: 30, 50 y 64, así como la diferenciación entre mujeres y hombres. Comente e interprete lo que observa en la gráfica, indicando con claridad a qué parámetro corresponde la curva/recta.
+
+
+### i) Modelo de RLM reducido para E(bpsystol; bmi, sex, age) con datos originales. 
+
+### ii) Modelo adecuado con transformación de datos.
+
+### iii) Asociación entre masa corporal y presión arterial sistólica.
+
+### iv) Gráfica resumen con la estimación puntual de la relación bpsystol y bmi. 
+
+
+
