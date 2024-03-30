@@ -9,9 +9,19 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+
+```{r, echo=FALSE, include=FALSE}
+library(tidyverse)
+library(stargazer)
+library(kableExtra)
+
+```
+
+
 ## 3. Modelos lineales generalizados para datos binarios
 
-La base de datos Preg3B.csv contiene información sobre 862 insectos que fueron expuestos a diferentes dosis (Deposit, mg) de tres insecticidas (Insecticide). La asignación a una dosis y al tipo de insecticida se realizó de forma aleatoria. Después de seis días se analizó si los insectos se habían muerto, de manera que la base de datos contiene también el número de insectos muertos (Killed) y el número total de insectos expuestos (Number) por cada dosis e insecticida. Dado que se asume que el costo de los insecticidas es el mismo, el objetivo del análisis es identificar para cada insecticida qué dosis es la mínima con la que se puede indicar que el 70% de los insectos se muere, así como si considerando la menor de esas tres dosis se puede afirmar que un insecticida es el mejor comparado con el resto.
+La base de datos Preg3B.csv contiene información sobre 862 insectos que fueron expuestos a diferentes dosis (Deposit en mg) de tres insecticidas (Insecticide). La asignación a una dosis y al tipo de insecticida se realizó de forma aleatoria. Después de seis días se analizó si los insectos se habían muerto, de manera que la base de datos contiene también el número de insectos muertos (Killed) y el número total de insectos expuestos (Number) por cada dosis e insecticida. Dado que se asume que el costo de los insecticidas es el mismo, el objetivo del análisis es identificar para cada insecticida qué dosis es la mínima con la que se puede indicar que el 70% de los insectos se muere, así como si considerando la menor de esas tres dosis se puede afirmar que un insecticida es el mejor comparado con el resto.
 
 Notar que aquí el evento de interés es si el insecto muere o no. Además, dado que se tienen varios insectos para diferentes valores de dosis e insecticida, es posible realizar gráficas que ayudan a entender lo que se está modelando; de hecho la base de datos está en un formato agregado.
 
@@ -36,7 +46,100 @@ d. En general ¿se puede indicar que los insecticidas A y B tienen un desempeño
 ### i) Gráfica de dispersión de dosis del insecticida y la proporción de insectos muertos.
 
 
+```{r, echo=FALSE}
+datos<-read_csv("Preg3B.csv", show_col_types = FALSE)
+datos$Insecticide<-factor(datos$Insecticide) #declaramos la variable como factor
+
+#Realizamos un relevel para poner como referencia "1"
+datos$Insecticide<-relevel(datos$Insecticide,"A")
+```
+
+
+```{r, echo=FALSE}
+#Creamos dato de proporcion de insectos que mueren
+datos$p_Killed<-datos$Killed/datos$Number
+#Generar la variable muere o no muere, 70% o más. 
+datos$mueren70<- ifelse( datos$p_Killed> 0.67, 1, 0)
+```
+
+
+
+Se presenta una gráfica de dispersión en donde en el eje x se incluye la dosis del insecticida (Deposit) y en el eje y la proporción de insectos muertos observados (se generó la variable p_Killed) para cada combinación dosis-insecticida (Deposit-Insecticide ), distinguiendo con un color el insecticida asociado. Se puede observar que el insecticida C tiene una mayor tasa de mortalidad para todas las seis dosis consideradas (solamente la primera dosis es menor a 70%). Para el caso de los insecticidas A y B, los resultados son muy parecidos, aunque marginalmente parece que el insecticida A tiene menor tasa de mortalidad, al menos de manera evidente en tres dosis distintas.   
+
+```{r, echo=FALSE}
+ggplot(data=datos, aes(x=Deposit,y=p_Killed, colour=Insecticide))+ geom_point()+ theme_classic()
+```
+
+
+
+
 ### ii) Ajuste modelos para datos binarios 1
+
+Ajustaremos modelos para datos binarios (ligas: logit, probit, cloglog) en donde se incluyen como covariables a Insecticide y lnD (lnD = ln(Deposit)), así como su interacción. Esto último implica que es el modelo completo y no uno reducido, tenemos el mismo AIC y Null Deviance, sin embargo el Residual deviance es distinto, por tener una covariable no categórica. 
+
+
+```{r, echo=FALSE}
+#Generar variables con datos en logaritmos
+datos$lnD=log(datos$Deposit)
+#datos$lnD=factor(datos$lnD) #declaramos la variable como factor
+```
+
+
+
+```{r, echo=FALSE}
+#En general hay 4 ligas que se podrían usar para covariables factores: logit, probit, cloglog y log.
+#Aqui emplearemos 3 ligas porque tenemos una variable numérica entre las covariables, omitimos liga log.
+fitlogit=glm(mueren70~Insecticide*lnD, family = binomial(link="logit"), data=datos)
+summary(fitlogit)
+
+fitprob=glm(mueren70~Insecticide*lnD, family = binomial(link="probit"), data=datos)
+summary(fitprob)
+
+fitcll=glm(mueren70~Insecticide*lnD, family = binomial(link="cloglog"), data=datos)
+summary(fitcll)
+
+```
+
+
+Las estimaciones de las probabilidades de que los insectos mueran, dados el insecticida y lnD, son las siguientes: 
+
+
+```{r, echo=FALSE}
+newdata <- data.frame(Insecticide = c("A", "A","A","A", "A","A","B","B", "B", "B","B", "B","C","C", "C", "C","C", "C"), lnD = c(0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415, 0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415, 0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415) )
+newdata$logit <- predict(fitlogit, newdata[,1:2], type = c("response"), se.fit=TRUE)$fit
+newdata$prob <- predict(fitprob, newdata[,1:2], type = c("response"), se.fit=TRUE)$fit
+newdata$cll <- predict(fitcll, newdata[,1:2], type = c("response"), se.fit=TRUE)$fit
+newdata
+
+```
+
+
+Los valores AIC y BIC coinciden, respectivamente: 
+
+
+```{r, echo=FALSE}
+#Además con el modelo completo también los criterios AIC y BIC coinciden
+c(AIC(fitlogit), AIC(fitprob),  AIC(fitcll))
+c(BIC(fitlogit), BIC(fitprob), BIC(fitcll))
+```
+
+La prueba de hipótesis: 
+
+```{r, echo=FALSE}
+#La primera prueba que se debe realizar es 
+#la similar a la prueba asociada a la tabla ANOVA en regresión lineal múltiple
+library(multcomp)
+K=matrix(c(0,1,0,0,0,0,
+           0,0,1,0,0,0,
+           0,0,0,1,0,0,
+           0,0,0,0,1,0,
+           0,0,0,0,0,1), ncol=6, nrow=5, byrow=TRUE)
+m=c(0,0,0,0,0)
+summary(glht(fitlogit, linfct=K, rhs=m), test=Chisqtest())  #Chisqtest() es apropiada para datos donde y no es continua
+# Se rechaza H0, lo que implica que se puede proceder
+# al análisis del modelo
+```
+
 
 
 ### iii) Ajuste modelos para datos binarios 2
