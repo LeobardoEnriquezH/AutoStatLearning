@@ -1,7 +1,7 @@
 ---
-title: "Ejercicio 3"
-author: "Equipo"
-date: "2024-03-26"
+title: ""
+author: ""
+date: ""
 output: pdf_document
 ---
 
@@ -23,31 +23,14 @@ library(kableExtra)
 
 La base de datos Preg3B.csv contiene información sobre 862 insectos que fueron expuestos a diferentes dosis (Deposit en mg) de tres insecticidas (Insecticide). La asignación a una dosis y al tipo de insecticida se realizó de forma aleatoria. Después de seis días se analizó si los insectos se habían muerto, de manera que la base de datos contiene también el número de insectos muertos (Killed) y el número total de insectos expuestos (Number) por cada dosis e insecticida. Dado que se asume que el costo de los insecticidas es el mismo, el objetivo del análisis es identificar para cada insecticida qué dosis es la mínima con la que se puede indicar que el 70% de los insectos se muere, así como si considerando la menor de esas tres dosis se puede afirmar que un insecticida es el mejor comparado con el resto.
 
-Notar que aquí el evento de interés es si el insecto muere o no. Además, dado que se tienen varios insectos para diferentes valores de dosis e insecticida, es posible realizar gráficas que ayudan a entender lo que se está modelando; de hecho la base de datos está en un formato agregado.
-
-i. Presente una gráfica de dispersión en donde en el eje x se incluye la dosis del insecticida y en el eje y la proporción de insectos muertos observados para cada combinación dosis-insecticida, distinguiendo con un color el insecticida asociado. Describa lo que se observa.
-
-ii. Ajuste modelos para datos binarios (ligas: logit, probit, cloglog) en donde incluya como covariables a Insecticide y lnD (lnD = ln(Deposit)), así como su interacción. Describa las expresiones del componente lineal o sistemático para cada insecticida como función de lnD. Indique si alguno de los modelos parece adecuado para realizar el análisis deseado.
-
-iii. Ajuste modelos para datos binarios (ligas: logit, probit, cloglog) en donde adicional a las covariables incluidas en ii), también incluya a la interacción de Insecticide con lnD2. Describa las expresiones del componente lineal o sistemático para cada insecticida como función de lnD. Indique si alguno de los modelos parece adecuado para realizar el análisis deseado y si tiene alguna ventaja la inclusión de los términos cuadráticos en el modelo.
-
-
-iv. Sólo con el modelo que considere más adecuado entre los que se ajustaron en ii) y iii)
-
-a. presente en la misma gráfica generada en i) los resultados de la estimación puntual para el valor esperado de la variable binaria (probabilidad de que un insecto muera).
-
-b. calcule la dosis mínima para cada insecticida con la que se puede indicar que el 70% de los insectos se muere.
-
-c. considerando la menor de las dosis encontradas en b), ¿se puede indicar que un insecticida es el mejor? Realice una prueba de hipótesis para argumentar en favor o en contra.
-
-d. En general ¿se puede indicar que los insecticidas A y B tienen un desempeño similar? Realice una prueba de hipótesis para argumentar en favor o en contra.
+Notar que aquí el evento de interés es si el insecto muere o no (died). Además, dado que se tienen varios insectos para diferentes valores de dosis e insecticida, es posible realizar gráficas que ayudan a entender lo que se está modelando; de hecho la base de datos está en un formato agregado.
 
 
 ### i) Gráfica de dispersión de dosis del insecticida y la proporción de insectos muertos.
 
 
 ```{r, echo=FALSE}
-datos<-read_csv("Preg3B.csv", show_col_types = FALSE)
+datos<-read_csv("https://raw.githubusercontent.com/LeobardoEnriquezH/Data/main/Preg3B.csv", show_col_types = FALSE)
 datos$Insecticide<-factor(datos$Insecticide) #declaramos la variable como factor
 
 #Realizamos un relevel para poner como referencia "1"
@@ -55,11 +38,12 @@ datos$Insecticide<-relevel(datos$Insecticide,"A")
 ```
 
 
+
+
+
 ```{r, echo=FALSE}
 #Creamos dato de proporcion de insectos que mueren
 datos$p_Killed<-datos$Killed/datos$Number
-#Generar la variable muere o no muere, 70% o más. 
-datos$mueren70<- ifelse( datos$p_Killed> 0.67, 1, 0)
 ```
 
 
@@ -67,7 +51,8 @@ datos$mueren70<- ifelse( datos$p_Killed> 0.67, 1, 0)
 Se presenta una gráfica de dispersión en donde en el eje x se incluye la dosis del insecticida (Deposit) y en el eje y la proporción de insectos muertos observados (se generó la variable p_Killed) para cada combinación dosis-insecticida (Deposit-Insecticide ), distinguiendo con un color el insecticida asociado. Se puede observar que el insecticida C tiene una mayor tasa de mortalidad para todas las seis dosis consideradas (solamente la primera dosis es menor a 70%). Para el caso de los insecticidas A y B, los resultados son muy parecidos, aunque marginalmente parece que el insecticida A tiene menor tasa de mortalidad, al menos de manera evidente en tres dosis distintas.   
 
 ```{r, echo=FALSE}
-ggplot(data=datos, aes(x=Deposit,y=p_Killed, colour=Insecticide))+ geom_point()+ theme_classic()
+ggplot(data=datos, aes(x=Deposit,y=p_Killed, colour=Insecticide))+ geom_point()+ theme_classic()+
+  theme(text = element_text(size = 11),element_line(linewidth =0.5))
 ```
 
 
@@ -75,12 +60,27 @@ ggplot(data=datos, aes(x=Deposit,y=p_Killed, colour=Insecticide))+ geom_point()+
 
 ### ii) Ajuste modelos para datos binarios 1
 
-Ajustaremos modelos para datos binarios (ligas: logit, probit, cloglog) en donde se incluyen como covariables a Insecticide y lnD (lnD = ln(Deposit)), así como su interacción. Esto último implica que es el modelo completo y no uno reducido, tenemos el mismo AIC y Null Deviance, sin embargo el Residual deviance es distinto, por tener una covariable no categórica. 
+Ajustaremos modelos para datos binarios (ligas: logit, probit, y cloglog) en donde se incluyen como covariables a Insecticide y lnD (lnD = ln(Deposit)), así como su interacción, para los datos desagrupados generados con las 862 filas de observaciones. Se calcularon los tres modelos con interacciones y se muestran en el siguiente Cuadro. De acuerdo con el criterio AIC el modelo más adecuado es el de la liga probit, cuyo AIC fue de 789.28 (el del logit de 789.44 y cloglog de 800.46). Los términos de las interacciones no son significativas para los tres modelos (no se rechaza la hipótesis nula), mientras que para el intercepto, InsecticideC y lnD se rechaza la hipótesis nula.  Esto sugiere que podría ser más adecuado el modelo reducido. 
+
+Adicionalmente, se calcularon los tres modelos (ligas logit, probit y cloglog) reducidos, sin las interacciones Insecticide-lnD. Todos tienen un menor AIC, en particular el modelo probit. Se puede observar que en estos casos incluso InsecticideB podría ser estadísticamente significativo si consideramos un nivel de significancia estadística del 10%. Si consideramos el modelo reducido, el modelo probit tiene un mejor desempeño por su AIC y pos ser más simple en la interpretación.  
+
+
+
+```{r, echo=FALSE}
+#Convertimos a datos desagrupados (más común en la práctica)
+#library(tidyverse)
+datos$NoKilled<-datos$Number-datos$Killed
+datna_1=datos %>% group_by(Killed,Insecticide,Deposit) %>%
+  do( data.frame(died= rep(1, .$Killed)))
+datna_2=datos %>% group_by(Killed,Insecticide,Deposit) %>%
+  do( data.frame(died= rep(0, .$NoKilled)))
+datna<-rbind(datna_1,datna_2)
+```
 
 
 ```{r, echo=FALSE}
 #Generar variables con datos en logaritmos
-datos$lnD=log(datos$Deposit)
+datna$lnD=log(datna$Deposit)
 #datos$lnD=factor(datos$lnD) #declaramos la variable como factor
 ```
 
@@ -89,53 +89,117 @@ datos$lnD=log(datos$Deposit)
 ```{r, echo=FALSE}
 #En general hay 4 ligas que se podrían usar para covariables factores: logit, probit, cloglog y log.
 #Aqui emplearemos 3 ligas porque tenemos una variable numérica entre las covariables, omitimos liga log.
-fitlogit=glm(mueren70~Insecticide*lnD, family = binomial(link="logit"), data=datos)
-summary(fitlogit)
+fitlogit=glm(died~Insecticide*lnD, family = binomial(link="logit"), data=datna)
+#summary(fitlogit)
 
-fitprob=glm(mueren70~Insecticide*lnD, family = binomial(link="probit"), data=datos)
-summary(fitprob)
+fitprob=glm(died~Insecticide*lnD, family = binomial(link="probit"), data=datna)
+#summary(fitprob)
 
-fitcll=glm(mueren70~Insecticide*lnD, family = binomial(link="cloglog"), data=datos)
-summary(fitcll)
-
-```
-
-
-Las estimaciones de las probabilidades de que los insectos mueran, dados el insecticida y lnD, son las siguientes: 
-
-
-```{r, echo=FALSE}
-newdata <- data.frame(Insecticide = c("A", "A","A","A", "A","A","B","B", "B", "B","B", "B","C","C", "C", "C","C", "C"), lnD = c(0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415, 0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415, 0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415) )
-newdata$logit <- predict(fitlogit, newdata[,1:2], type = c("response"), se.fit=TRUE)$fit
-newdata$prob <- predict(fitprob, newdata[,1:2], type = c("response"), se.fit=TRUE)$fit
-newdata$cll <- predict(fitcll, newdata[,1:2], type = c("response"), se.fit=TRUE)$fit
-newdata
+fitcll=glm(died~Insecticide*lnD, family = binomial(link="cloglog"), data=datna)
+#summary(fitcll)
 
 ```
 
 
-Los valores AIC y BIC coinciden, respectivamente: 
+```{r, echo=FALSE}
+#En general hay 4 ligas que se podrían usar para covariables factores: logit, probit, cloglog y log.
+#Aqui emplearemos 3 ligas porque tenemos una variable numérica entre las covariables, omitimos liga log.
+fitlogit_s=glm(died~Insecticide+lnD, family = binomial(link="logit"), data=datna)
+#summary(fitlogit)
+
+fitprob_s=glm(died~Insecticide+lnD, family = binomial(link="probit"), data=datna)
+#summary(fitprob)
+
+fitcll_s=glm(died~Insecticide+lnD, family = binomial(link="cloglog"), data=datna)
+#summary(fitcll)
+
+```
+
+
+
 
 
 ```{r, echo=FALSE}
+#stargazer(fitlogit, fitprob, fitcll, fitlogit_s, fitprob_s, fitcll_s)
+```
+
+
+
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\footnotesize
+\begin{tabular}{@{\extracolsep{5pt}}lcccccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{6}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-7} 
+\\[-1.8ex] & \multicolumn{6}{c}{died} \\ 
+\\[-1.8ex] & \textit{logistic} & \textit{probit} & \textit{glm: binomial} & \textit{logistic} & \textit{probit} & \textit{glm: binomial} \\ 
+ & \textit{} & \textit{} & \textit{link = cloglog} & \textit{} & \textit{} & \textit{link = cloglog} \\ 
+\\[-1.8ex] & (1) & (2) & (3) & (4) & (5) & (6)\\ 
+\hline \\[-1.8ex] 
+ InsecticideB & 0.188 & 0.105 & 0.260 & 0.349$^{*}$ & 0.209$^{*}$ & 0.249$^{*}$ \\ 
+  & (0.722) & (0.400) & (0.530) & (0.206) & (0.120) & (0.135) \\ 
+  & & & & & & \\ 
+ InsecticideC & 2.110$^{***}$ & 1.505$^{***}$ & 2.350$^{***}$ & 2.840$^{***}$ & 1.672$^{***}$ & 1.706$^{***}$ \\ 
+  & (0.790) & (0.433) & (0.485) & (0.254) & (0.141) & (0.151) \\ 
+  & & & & & & \\ 
+ lnD & 2.727$^{***}$ & 1.634$^{***}$ & 1.861$^{***}$ & 2.887$^{***}$ & 1.690$^{***}$ & 1.714$^{***}$ \\ 
+  & (0.349) & (0.194) & (0.234) & (0.224) & (0.122) & (0.134) \\ 
+  & & & & & & \\ 
+ InsecticideB:lnD & 0.111 & 0.072 & $-$0.004 &  &  &  \\ 
+  & (0.487) & (0.270) & (0.319) &  &  &  \\ 
+  & & & & & & \\ 
+ InsecticideC:lnD & 0.661 & 0.137 & $-$0.486 &  &  &  \\ 
+  & (0.671) & (0.347) & (0.327) &  &  &  \\ 
+  & & & & & & \\ 
+ Constant & $-$4.231$^{***}$ & $-$2.543$^{***}$ & $-$3.377$^{***}$ & $-$4.461$^{***}$ & $-$2.623$^{***}$ & $-$3.138$^{***}$ \\ 
+  & (0.524) & (0.289) & (0.392) & (0.356) & (0.194) & (0.238) \\ 
+  & & & & & & \\ 
+\hline \\[-1.8ex] 
+Observations & 862 & 862 & 862 & 862 & 862 & 862 \\ 
+Log Likelihood & $-$388.721 & $-$388.640 & $-$394.229 & $-$389.246 & $-$388.727 & $-$395.786 \\ 
+Akaike Inf. Crit. & 789.443 & 789.280 & 800.458 & 786.491 & 785.454 & 799.571 \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{6}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
+
+
+  
+
+
+
+
+
+```{r, echo=FALSE}
+#A continuación se muestran los valores AIC y BIC, respectivamente, para las ligas logit, probit y cloglog. Como se mencinó anteriormente, se elige el modelo con el menor AIC, que es el de la liga probit. 
 #Además con el modelo completo también los criterios AIC y BIC coinciden
-c(AIC(fitlogit), AIC(fitprob),  AIC(fitcll))
-c(BIC(fitlogit), BIC(fitprob), BIC(fitcll))
+# ("AIC:logit probit cloglog")
+# c(AIC(fitlogit), AIC(fitprob),  AIC(fitcll))
+# ("BIC:logit probit cloglog")
+# c(BIC(fitlogit), BIC(fitprob), BIC(fitcll))
 ```
 
-La prueba de hipótesis: 
 
-```{r, echo=FALSE}
+
+La prueba de hipótesis global con la chi-cuadrada del modelo **probit reducido** muestra un valor Chisq de 264.5619	y un p-value muy pequeño (Pr(>Chisq): 4.633875e-57), mucho menor a 0.05, es decir se rechaza la hipótesis nula, por lo que podríamos proceder con el análisis del modelo. Sin embargo, antes de continuar, revisaremos en el siguiente inciso algunos otros modelos mejores por su AIC y simplicidad interpretativa o parsimonia. 
+
+
+
+```{r, echo=FALSE, message=FALSE}
 #La primera prueba que se debe realizar es 
 #la similar a la prueba asociada a la tabla ANOVA en regresión lineal múltiple
-library(multcomp)
-K=matrix(c(0,1,0,0,0,0,
-           0,0,1,0,0,0,
-           0,0,0,1,0,0,
-           0,0,0,0,1,0,
-           0,0,0,0,0,1), ncol=6, nrow=5, byrow=TRUE)
-m=c(0,0,0,0,0)
-summary(glht(fitlogit, linfct=K, rhs=m), test=Chisqtest())  #Chisqtest() es apropiada para datos donde y no es continua
+
+# library(multcomp)
+# K=matrix(c(0,1,0,0,
+#            0,0,1,0,
+#            0,0,0,1), ncol=4, nrow=3, byrow=TRUE)
+# m=c(0,0,0)
+# summary(glht(fitprob_s, linfct=K, rhs=m), test=Chisqtest())  #Chisqtest() es apropiada para datos donde y no es continua
+
 # Se rechaza H0, lo que implica que se puede proceder
 # al análisis del modelo
 ```
@@ -144,7 +208,195 @@ summary(glht(fitlogit, linfct=K, rhs=m), test=Chisqtest())  #Chisqtest() es apro
 
 ### iii) Ajuste modelos para datos binarios 2
 
+A continuación incluiremos, adicional a los términos de las covariables anteriores, a la interacción de Insecticide con el término cuadrádico (lnD)^2. Para las ligas logit y probit, ninguna las intersecciones con lnD y (lnD)^2 rechazan la hipótesis nula, es decir ninguna aparece estadísticamente significativa porque el p-value asociado es mayor a 0.05. Para el caso del cloglog, la única intersección estadísticamente significativa al 5% de significancia estadística es InsecticideC:lnD. En los tres modelos se rechaza la hipótesis nula para el intercepto, InsecticideC, lnD y lnD2. Los AIC son  786.61, 786.92 y 786.06 para los modelos con liga logit, probit y cloglog, respectivamente, lo que indica que el mejor modelo por el criterio AIC es el de la liga cloglog. 
+
+Adicionalmente, se procedió a hacer un modelo reducido con sólo efectos principales, sin estas interacciones y el resultado es que hay menores AIC para los tres modelos considerando las variables explicativas Insecticide, lnD y lnD2, sin las interacciones. Por ejemplo, el menor AIC es de 780.01 para el caso de la liga probit, el siguiente Cuadro muestra los resultados. 
 
 
-### iv) Modelo adecuado. Comparaciones y prueba de hipótesis.
+
+
+
+```{r, echo=FALSE}
+datna$lnD2=datna$lnD*datna$lnD
+```
+
+
+```{r, echo=FALSE}
+#En general hay 4 ligas que se podrían usar para covariables factores: logit, probit, cloglog y log.
+#Aqui emplearemos 3 ligas porque tenemos una variable numérica entre las covariables, omitimos liga log.
+fitlogit=glm(died~Insecticide*lnD+Insecticide*lnD2, family = binomial(link="logit"), data=datna)
+#summary(fitlogit)
+
+fitprob=glm(died~Insecticide*lnD+Insecticide*lnD2, family = binomial(link="probit"), data=datna)
+#summary(fitprob)
+
+fitcll=glm(died~Insecticide*lnD+Insecticide*lnD2, family = binomial(link="cloglog"), data=datna)
+#summary(fitcll)
+
+```
+
+
+
+```{r, echo=FALSE}
+#En general hay 4 ligas que se podrían usar para covariables factores: logit, probit, cloglog y log.
+#Aqui emplearemos 3 ligas porque tenemos una variable numérica entre las covariables, omitimos liga log.
+fitlogit_s=glm(died~Insecticide+lnD +lnD2, family = binomial(link="logit"), data=datna)
+#summary(fitlogit)
+
+fitprob_s=glm(died~Insecticide+lnD +lnD2, family = binomial(link="probit"), data=datna)
+#summary(fitprob)
+
+fitcll_s=glm(died~Insecticide+lnD +lnD2, family = binomial(link="cloglog"), data=datna)
+#summary(fitcll)
+
+```
+
+
+
+
+
+```{r, echo=FALSE}
+#stargazer(fitlogit, fitprob, fitcll, fitlogit_s, fitprob_s, fitcll_s)
+```
+
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\footnotesize
+\begin{tabular}{@{\extracolsep{5pt}}lcccccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{6}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-7} 
+\\[-1.8ex] & \multicolumn{6}{c}{died} \\ 
+\\[-1.8ex] & \textit{logistic} & \textit{probit} & \textit{glm: binomial} & \textit{logistic} & \textit{probit} & \textit{glm: binomial} \\ 
+ & \textit{} & \textit{} & \textit{link = cloglog} & \textit{} & \textit{} & \textit{link = cloglog} \\ 
+\\[-1.8ex] & (1) & (2) & (3) & (4) & (5) & (6)\\ 
+\hline \\[-1.8ex] 
+ InsecticideB & 2.013 & 0.679 & 1.973 & 0.325 & 0.195 & 0.221$^{*}$ \\ 
+  & (2.589) & (1.361) & (2.085) & (0.204) & (0.120) & (0.133) \\ 
+  & & & & & & \\ 
+ InsecticideC & 6.150$^{**}$ & 2.934$^{**}$ & 6.139$^{***}$ & 2.976$^{***}$ & 1.701$^{***}$ & 1.663$^{***}$ \\ 
+  & (2.684) & (1.388) & (1.825) & (0.271) & (0.145) & (0.152) \\ 
+  & & & & & & \\ 
+ lnD & 9.085$^{***}$ & 4.717$^{***}$ & 8.599$^{***}$ & 6.813$^{***}$ & 3.775$^{***}$ & 4.117$^{***}$ \\ 
+  & (2.778) & (1.474) & (2.173) & (1.408) & (0.782) & (0.857) \\ 
+  & & & & & & \\ 
+ lnD2 & $-$2.167$^{**}$ & $-$1.066$^{**}$ & $-$2.198$^{***}$ & $-$1.407$^{***}$ & $-$0.750$^{***}$ & $-$0.844$^{***}$ \\ 
+  & (0.918) & (0.499) & (0.691) & (0.491) & (0.276) & (0.295) \\ 
+  & & & & & & \\ 
+ InsecticideB:lnD & $-$2.479 & $-$0.773 & $-$2.376 &  &  &  \\ 
+  & (3.663) & (1.982) & (2.790) &  &  &  \\ 
+  & & & & & & \\ 
+ InsecticideC:lnD & $-$5.238 & $-$1.872 & $-$5.572$^{**}$ &  &  &  \\ 
+  & (4.300) & (2.198) & (2.530) &  &  &  \\ 
+  & & & & & & \\ 
+ InsecticideB:lnD2 & 0.839 & 0.277 & 0.748 &  &  &  \\ 
+  & (1.231) & (0.678) & (0.895) &  &  &  \\ 
+  & & & & & & \\ 
+ InsecticideC:lnD2 & 1.971 & 0.628 & 1.558$^{*}$ &  &  &  \\ 
+  & (1.656) & (0.817) & (0.843) &  &  &  \\ 
+  & & & & & & \\ 
+ Constant & $-$8.512$^{***}$ & $-$4.560$^{***}$ & $-$8.123$^{***}$ & $-$6.946$^{***}$ & $-$3.920$^{***}$ & $-$4.647$^{***}$ \\ 
+  & (1.993) & (1.022) & (1.637) & (0.967) & (0.524) & (0.594) \\ 
+  & & & & & & \\ 
+\hline \\[-1.8ex] 
+Observations & 862 & 862 & 862 & 862 & 862 & 862 \\ 
+Log Likelihood & $-$384.307 & $-$384.460 & $-$384.028 & $-$385.098 & $-$385.006 & $-$391.604 \\ 
+Akaike Inf. Crit. & 786.613 & 786.919 & 786.055 & 780.196 & 780.011 & 793.208 \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{6}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
+
+
+
+
+
+
+
+
+
+
+```{r, echo=FALSE}
+#Además con el modelo completo también los criterios AIC y BIC coinciden
+# ("AIC:logit probit cloglog")
+# c(AIC(fitlogit), AIC(fitprob),  AIC(fitcll))
+# ("BIC:logit probit cloglog")
+# c(BIC(fitlogit), BIC(fitprob), BIC(fitcll))
+```
+
+ 
+
+
+La prueba de hipótesis global con la chi-cuadrada del modelo **probit reducido** muestra un valor Chisq de 254.2325	y un p-value muy pequeño (Pr(>Chisq): 7.974736e-54), mucho menor a 0.05, es decir se rechaza la hipótesis nula, por lo que podemos proceder con el análisis de este modelo reducido más sencillo, de died en función de Insecticide (A,B y C, con A como de referencia), lnD  y lnD2.   
+
+
+```{r, echo=FALSE, message=FALSE}
+#La primera prueba que se debe realizar es 
+#la similar a la prueba asociada a la tabla ANOVA en regresión lineal múltiple
+
+# library(multcomp)
+# K=matrix(c(0,1,0,0,0,
+#            0,0,1,0,0,
+#            0,0,0,1,0,
+#            0,0,0,0,1), ncol=5, nrow=4, byrow=TRUE)
+# m=c(0,0,0,0)
+# summary(glht(fitprob_s, linfct=K, rhs=m), test=Chisqtest())  #Chisqtest() es apropiada para datos donde y no es continua
+
+# Se rechaza H0, lo que implica que se puede proceder
+# al análisis del modelo
+```
+
+
+
+### iv) Modelo adecuado. Comparaciones, probabilidades y prueba de hipótesis.
+
+
+Las estimaciones de las probabilidades de que los insectos mueran (prob_s), dados el insecticida, lnD y lnD2, son las siguientes para el modelo probit reducido. Se puede observar que para el insecticida A, la probabilidad de muerte mayor al 70% se da hasta la dosis de entre 6 y 8 miligramos, mientras que para el insecticida B se da entre 4.59 a 6 mg, y finalmente para el insecticida C, se da entre los 2 a 2.64 miligramos.    
+
+
+
+```{r, echo=FALSE}
+
+newdata <- data.frame(Insecticide = c("A", "A","A","A", "A","A","B","B", "B", "B","B", "B","C","C", "C", "C","C", "C"), lnD = c(0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415, 0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415, 0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415), lnD2 = c(0.4804530, 0.9424117, 1.5550895,2.32221, 3.246158, 4.32407, 0.4804530, 0.9424117, 1.5550895,2.32221, 3.246158, 4.32407, 0.4804530, 0.9424117, 1.5550895,2.32221, 3.246158, 4.32407) )
+newdata$prob_s <- predict(fitprob_s, newdata[,1:3], type = c("response"), se.fit=TRUE)$fit
+
+newdata$Deposit<-exp(newdata$lnD)
+
+kable(newdata)
+
+```
+
+
+
+La siguiente gráfica muestra en el eje x la dosis del insecticida (Deposit) y en el eje y izquierdo la proporción de insectos muertos observados (se generó la variable p_Killed) para cada combinación dosis-insecticida (Deposit-Insecticide ), distinguiendo con una figura distinta el insecticida asociado. Adicionalmente se agrega un eje derecho, con las probabilidades obtenidas con el modelo probit para cada dosis e insecticida. El color **\textcolor{orange}{coral}**  indica los datos de la tasa de mortalidad (p_Killed) y el color **\textcolor{cyan}{deepskyblue}** indica los valores de las probabilidades calculadas con el modelo (probit). Con el modelo se obtuvieron probabilidades muy cercanas a las proporciones o tasas de mortalidad observadas, especialmente para el insecticida C (cuadros).     
+
+
+```{r, echo=FALSE}
+
+newdata1<- newdata[,-c(1,5)]
+datosfin<-cbind(datos,newdata1)
+```
+
+
+```{r, echo=FALSE}
+ggplot(data = datosfin, aes(x = Deposit))+
+   geom_point(aes(y = p_Killed, colour="coral", shape =Insecticide )) +
+   geom_point(aes(y = prob_s, colour="deepskyblue", shape = Insecticide)) +
+   scale_y_continuous(sec.axis = sec_axis(~ .*1,  name="probit")) + theme_classic()
+
+```
+
+
+
+
+
+
+
+
+
+
+
 

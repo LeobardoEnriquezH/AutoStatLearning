@@ -1,7 +1,7 @@
 ---
-title: "Ejercicio 1"
-author: "Equipo"
-date: "2024-03-26"
+title: ""
+author: ""
+date: ""
 output: pdf_document
 ---
 
@@ -44,7 +44,8 @@ modelo1<-lm(data=datos, bpsystol ~ bmi + sex + age)
 
 \begin{table}[!htbp] \centering 
   \caption{} 
-  \label{} 
+  \label{}
+\footnotesize
 \begin{tabular}{@{\extracolsep{5pt}}lc} 
 \\[-1.8ex]\hline 
 \hline \\[-1.8ex] 
@@ -160,7 +161,8 @@ modelo2=lm(data=datos, I(log(bpsystol)) ~ bmi + sex + age)
 
 \begin{table}[!htbp] \centering 
   \caption{} 
-  \label{} 
+  \label{}
+\footnotesize
 \begin{tabular}{@{\extracolsep{5pt}}lc} 
 \\[-1.8ex]\hline 
 \hline \\[-1.8ex] 
@@ -224,6 +226,14 @@ kable(t(table_tests_fin2)) %>%
 kable_styling(bootstrap_options = "striped", full_width = F)
 ```
 
+
+```{r, echo=FALSE}
+AICmodelo1<-AIC(modelo1)
+AICmodelo2<-AIC(modelo2)
+```
+
+
+Cabe mencionar que el AIC del primer modelo fue de `r AICmodelo1` y del modelo final es de `r AICmodelo2`. Por lo que por este criterio también es un mejor modelo. 
 
 
 ### iii) Asociación entre masa corporal y presión arterial sistólica.
