@@ -1,0 +1,193 @@
+---
+title: "Ejercicio 2"
+author: 'Equipo #'
+date: "2024-03-31"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, fig.width = 6, fig.height = 3.5)
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+library(tidyverse)
+library(kableExtra)
+library(ggplot2)
+library(cowplot)
+library(stargazer)
+library(knitr)
+library(dplyr)
+library(readr)
+library(car)
+```
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+data1 <- read_csv("Preg1B.csv")
+```
+
+Se desea analizar si existe una asociación entre la presión arterial sistólica (bpsystol) y el índice de masa corporal (bmi), en particular, si es posible observar que tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica.
+
+Usando la información de la pregunta 1 realizar lo siguiente:
+
+1.Explorando los diferentes modelos lineales generalizados comúnmente usados cuando la variable dependiente es continua (normal, gamma, inversa gaussiana), presente un modelo que le parezca adecuado
+para modelar E(bpsystol; bmi,sex, age). Considere por simplicidad que no hay interacción entre las
+covariables del modelo. Deberá indicar con claridad cuál es la expresión matemática que se usa para
+modelar E(bpsystol; bmi,sex, age), así como describir el procedimiento y criterio usado para seleccionar
+el modelo.
+
+Antes de comenzar con la modelación y selección del modelo adecuado para nuestros datos veamos como están conformados los mismos.
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+summary(data1)
+```
+
+De la información que tenemos asumiremos que la variable bmi es un factor que se puede controlar lo cual nos llevaría a deducir que el bmi influye de manera directa en la presión sistolica de una persona, de lo contrario no podríamos hacer ninguna afirmación que avale que esto en verdad sucede.
+
+Entonces veamos como se ven los datos.
+
+```{r,echo=FALSE,message=F,warning=FALSE}
+plot(data1$bmi,data1$bpsystol, xlab = "BMI", ylab = "Presión sistolica", col = "green4")
+```
+
+De la gráfica podemos observar que la variable de la presión sistolica siempre es positiva y en general no se tiene una varianza con muchos cambios, es decir, los datos parecen agruparse con una varianza constante, ademas estos se encuentran mas agrupados del lado izquierdo, entre un rango de 10 a 3o bmi.
+Dado la información que obtuvimos consideraremos ajustar un GLM con familia inversa gaussiana y funcion liga identidad dado que los datos tienen una cola pesada del lado izquierdo.
+
+Para estar más seguros de esto haremos un histograma de la variable de respuesta.
+
+```{r,echo=FALSE,message=FALSE,warning=F}
+hist(data1$bpsystol, main = "Histograma de la variable de respuesta", xlab = "Presión sistolica", col = 'seagreen')
+```
+
+Ya que verificamos que la variable respuesta tiene una cola pesada procederemos a ajustas el GLM con la funcion liga mencionada anteriormente.
+
+
+```{r}
+data1$sex <- as.factor(data1$sex)
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+glm_fit = glm(bpsystol ~ bmi + sex + age, data = data1, family = inverse.gaussian(link = "identity"))
+summary(glm_fit)
+```
+
+Ya que ajustamos el modelo escribiremos de forma matemática como se ve el modelo:
+
+\begin{center}
+$log(bpsystol_i)$ = $\beta_0$ + $\beta_1$$BMI_i$ + sex + age con función liga: $\mu_i$ = $g(\theta)$ = $1/\theta_i$ donde $\theta$ = bpsystol.
+\end{center}
+
+ El criterio que usamos para usar este modelo se baso en la verificación de la distribución de la variable dependiente y así poder escoger que función liga seria mejor para ajustar el modelo, ademas se comparo el AIC de este modelo con otros 2 modelo en los que se cambiaba la función liga, de dicha comparación fue este modelo el que mejor AIC obtuvo de los 3.
+
+# Verificación de supuestos
+
+## Linealidad
+
+Para empezar hagamos una gráfica con la que veremos como se comporta la linealidad de nuestro modelo y obtengamos el valor promedio de los residuos.
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+plot(glm_fit,1, col = "seagreen")
+mean(glm_fit$residuals)
+```
+
+De la gráfica podemos decir que no tenemos problemas con la normalidad del modelo, ademas obtuvimos un valor de media de los residuos muy cercano a 0, lo cual también nos indica que no hay ningún problema con este supuesto.
+
+## Normalidad
+
+Para verificar si el modelo ajustado cumple con este supuesto realizaremos la prueba de Shapiro-Wilk con una alfa de 5%.
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+shapiro.test(glm_fit$residuals)
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+library(car)
+qqPlot(glm_fit$residuals, 
+       distribution = "norm",
+       main = "Q-Q PLOT de residuos",
+       xlab = "cuantiles teóricos",
+       ylab = "cuantiles de la muestra",
+       id = FALSE, grid = TRUE,
+       envelope = 0.95, col = carPalette()[1], col.lines = carPalette()[3],
+       pch = 20,
+       cex = 1,
+       lwd = 2)
+qqline(glm_fit$residuals,
+       col = "blue",
+       lty = 1,
+       lwd = 2) 
+```
+
+Del resultado del test y con la gráfica tenemos que el modelo paso el supuesto de normalidad.
+
+## Homocedasticidad
+
+```{r,echo=FALSE,message=F,warning=FALSE}
+library(lmtest)
+bptest(glm_fit)
+```
+
+
+De los resultados obtenidos del test, podemos decir que el modelo no viola el supuesto de homocedasticidad.
+
+## Independencia
+
+Para verificar este supuesto realizaremos el test Durbin-Watson
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+durbinWatsonTest(glm_fit)
+```
+
+De los resultados obtenidos tenemos un valor de 2.22 muy cercano a 2, es decir, no tenemos problemas con la independencia en el modelo generado.
+
+
+2.¿Se puede indicar que para una persona de cierta edad y sexo, tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica?Argumente su respuesta, indicando con claridad la prueba o pruebas de hipótesis usadas y las hipótesis que se están contrastando.
+
+Usando la información que obtuvimos del modelo podemos afirmar que el sexo y edad de una persona con un IMC alto va a afectar directamente la presion sistolica de la misma, resultado que podríamos decir era el esperado.
+
+Dicho resultado lo podemos denotar con las siguientes pruebas de hipótesis:
+
+\begin{center}
+$H_0: \beta_1 = 0$ vs $H_a: \beta_1 \neq 0$
+\end{center}
+
+Tomando una alfa de 0.05 y dado que obtuvimos un p-value menor a esta alfa, entonces rechazamos la hipótesis nula, por lo tanto el parámetro $\beta_1$ es estadisticamente significativo.
+
+3.Para complementar la interpretación de los resultados del inciso iii), presente una gráfica resumen con la estimación puntual asociada a la relación entre bpsystol y bmi. Para esto considere sólo tres posibles edades: 30, 50 y 64, así como la diferenciación entre mujeres y hombres. Comente e interprete lo que observa en la gráfica, indicando con claridad a qué parámetro corresponde la curva/recta.
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+curva_ajustada_mujer30 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x + glm_fit$coefficients[3] + glm_fit$coefficients[4]*30}
+
+curva_ajustada_hombre30 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x  + glm_fit$coefficients[4]*30}
+
+curva_ajustada_mujer50 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x + glm_fit$coefficients[3] + glm_fit$coefficients[4]*50}
+
+curva_ajustada_hombre50 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x  + glm_fit$coefficients[4]*50}
+
+curva_ajustada_mujer64 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x + glm_fit$coefficients[3] + glm_fit$coefficients[4]*64}
+
+curva_ajustada_hombre64 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x  + glm_fit$coefficients[4]*64}
+```
+
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE}
+ggplot(data1, aes(bmi, bpsystol)) +
+  geom_point() +
+  geom_function(fun = curva_ajustada_mujer30, aes(linetype = "mujer de 30") ,col="skyblue", lwd = 1) +
+  geom_function(fun = curva_ajustada_hombre30, aes(linetype = "hombre de 30") ,col="green") +
+  geom_function(fun = curva_ajustada_mujer50, aes(linetype = "mujer de 50") ,col="darkblue", lwd = 0.8) +
+  geom_function(fun = curva_ajustada_hombre50, aes(linetype = "hombre de 50") ,col="darkgreen") +
+  geom_function(fun = curva_ajustada_mujer64, aes(linetype = "mujer de 64") ,col="red") +
+  geom_function(fun = curva_ajustada_hombre64, aes(linetype = "hombre de 64") ,col="magenta") + theme_bw()
+```
+
+De los resultados es evidente que la presión sistólica de los hombres es mayor que la de las mujeres para los 3 grupos,por lo que desde ahí nos damos cuenta que el sexo ya es un factor que influye de manera directa en la presión sistólica de una persona, aunado a eso tenemos el factor de la edad donde es claro que a mayor edad la presion de una persona también sera mayor, algo que se mantiene para ambos casos es el factor del IMC donde se tiene que si este aumenta también crece la presion arterial sistólica.
+
+
+4.Comparando el modelo en i) con el usado en la pregunta 1, compare las conclusiones e interpretaciones que se pueden obtener e indique qué modelo prefiere usar. Argumente con claridad su respuesta, por ejemplo, debe incluir los valores de AIC o BIC, así como ventajas y desventajas en la interpretación.
+
+Si bien ambos modelos obtenidos dieron buenos resultados y ademas similares, en el sentido de que ambos nos fueron de ayuda para explicar como las variables IMC,Edad,Sexo afectan la presion arterial sistolica de una persona es claro que la complejidad de un modelo fue mayor a la otra, para el caso del modelo usado en el ejercicio 1 usamos un modelo lineal simple con una transformación de logaritmo, lo cual lo hace mas fácil de interpretar que el modelo usado en este ejercicio el cual requirió de ajustar un GLM con familia inversa gaussiana y función liga identidad.
+
+Por lo tanto decidimos que es conveniente utilizar el modelo que obtuvimos en el ejercicio 1, el cual tuvo un AIC de -376.2099 contra un AIC de 2484.1 del modelo empleado para este ejercicio, ademas es importante mencionar que las ventajas de emplear el modelo obtenido en el inciso anterior nos facilitan la interpretación del mismo.
+
