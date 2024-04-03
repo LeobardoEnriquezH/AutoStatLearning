@@ -3,6 +3,7 @@ title: ""
 author: ""
 date: ""
 output: pdf_document
+geometry: margin=0.75in
 ---
 
 ```{r setup, include=FALSE}
@@ -21,9 +22,7 @@ library(kableExtra)
 
 ## 3. Modelos lineales generalizados para datos binarios
 
-La base de datos Preg3B.csv contiene información sobre 862 insectos que fueron expuestos a diferentes dosis (Deposit en mg) de tres insecticidas (Insecticide). La asignación a una dosis y al tipo de insecticida se realizó de forma aleatoria. Después de seis días se analizó si los insectos se habían muerto, de manera que la base de datos contiene también el número de insectos muertos (Killed) y el número total de insectos expuestos (Number) por cada dosis e insecticida. Dado que se asume que el costo de los insecticidas es el mismo, el objetivo del análisis es identificar para cada insecticida qué dosis es la mínima con la que se puede indicar que el 70% de los insectos se muere, así como si considerando la menor de esas tres dosis se puede afirmar que un insecticida es el mejor comparado con el resto.
-
-Notar que aquí el evento de interés es si el insecto muere o no (died). Además, dado que se tienen varios insectos para diferentes valores de dosis e insecticida, es posible realizar gráficas que ayudan a entender lo que se está modelando; de hecho la base de datos está en un formato agregado.
+La base de datos Preg3B.csv contiene información sobre 862 insectos que fueron expuestos a diferentes dosis en mg (Deposit) de tres insecticidas (Insecticide). La asignación a una dosis y al tipo de insecticida se realizó de forma aleatoria. Después de seis días se analizó si los insectos se habían muerto, de manera que la base de datos contiene también el número de insectos muertos (Killed) y el número total de insectos expuestos (Number) por cada dosis e insecticida. Dado que se asume que el costo de los insecticidas es el mismo, el objetivo del análisis es identificar para cada insecticida qué dosis es la mínima con la que se puede indicar que el 70% de los insectos se muere, así como si considerando la menor de esas tres dosis se puede afirmar que un insecticida es el mejor comparado con el resto. El evento de interés es si el insecto muere o no (died).
 
 
 ### i) Gráfica de dispersión de dosis del insecticida y la proporción de insectos muertos.
@@ -48,10 +47,10 @@ datos$p_Killed<-datos$Killed/datos$Number
 
 
 
-Se presenta una gráfica de dispersión en donde en el eje x se incluye la dosis del insecticida (Deposit) y en el eje y la proporción de insectos muertos observados (se generó la variable p_Killed) para cada combinación dosis-insecticida (Deposit-Insecticide ), distinguiendo con un color el insecticida asociado. Se puede observar que el insecticida C tiene una mayor tasa de mortalidad para todas las seis dosis consideradas (solamente la primera dosis es menor a 70%). Para el caso de los insecticidas A y B, los resultados son muy parecidos, aunque marginalmente parece que el insecticida A tiene menor tasa de mortalidad, al menos de manera evidente en tres dosis distintas.   
+Se presenta una gráfica de dispersión en donde en el eje $x$ se incluye la dosis del insecticida (Deposit) y en el eje $y$ la proporción de insectos muertos observados (p_Killed) para cada combinación dosis-insecticida (Deposit-Insecticide), distinguiendo con un color el insecticida asociado. Se puede observar que el insecticida C tiene una mayor tasa de mortalidad para todas las seis dosis consideradas (solamente la primera dosis es menor a 70%). Para el caso de los insecticidas A y B, los resultados son muy parecidos, aunque marginalmente parece que el insecticida A tiene menor tasa de mortalidad, al menos de manera evidente en tres dosis distintas.   
 
-```{r, echo=FALSE}
-ggplot(data=datos, aes(x=Deposit,y=p_Killed, colour=Insecticide))+ geom_point()+ theme_classic()+
+```{r, echo=FALSE, fig.width = 6, fig.height = 2.5}
+ggplot(data=datos, aes(x=Deposit,y=p_Killed, colour=Insecticide))+ geom_point()+ theme_bw()+
   theme(text = element_text(size = 11),element_line(linewidth =0.5))
 ```
 
@@ -60,9 +59,9 @@ ggplot(data=datos, aes(x=Deposit,y=p_Killed, colour=Insecticide))+ geom_point()+
 
 ### ii) Ajuste modelos para datos binarios 1
 
-Ajustaremos modelos para datos binarios (ligas: logit, probit, y cloglog) en donde se incluyen como covariables a Insecticide y lnD (lnD = ln(Deposit)), así como su interacción, para los datos desagrupados generados con las 862 filas de observaciones. Se calcularon los tres modelos con interacciones y se muestran en el siguiente Cuadro. De acuerdo con el criterio AIC el modelo más adecuado es el de la liga probit, cuyo AIC fue de 789.28 (el del logit de 789.44 y cloglog de 800.46). Los términos de las interacciones no son significativas para los tres modelos (no se rechaza la hipótesis nula), mientras que para el intercepto, InsecticideC y lnD se rechaza la hipótesis nula.  Esto sugiere que podría ser más adecuado el modelo reducido. 
+Ajustaremos modelos para datos binarios (ligas: logit, probit, y cloglog) en donde se incluyen como covariables a Insecticide y lnD (lnD = ln(Deposit)), así como su interacción. Se calcularon los tres modelos con interacciones y se muestran en el siguiente Cuadro. De acuerdo con el criterio AIC el modelo más adecuado es el de la liga probit, cuyo AIC fue de 789.28 (el del logit de 789.44 y cloglog de 800.46). Los términos de las interacciones no son significativas para los tres modelos (no se rechaza la hipótesis nula de que los coeficientes son cero), mientras que para el intercepto, InsecticideC y lnD sí se rechaza la hipótesis nula.  Esto sugiere que podría ser más adecuado el modelo reducido. 
 
-Adicionalmente, se calcularon los tres modelos (ligas logit, probit y cloglog) reducidos, sin las interacciones Insecticide-lnD. Todos tienen un menor AIC, en particular el modelo probit. Se puede observar que en estos casos incluso InsecticideB podría ser estadísticamente significativo si consideramos un nivel de significancia estadística del 10%. Si consideramos el modelo reducido, el modelo probit tiene un mejor desempeño por su AIC y pos ser más simple en la interpretación.  
+Adicionalmente, se calcularon los tres modelos (ligas logit, probit y cloglog) reducidos, sin las interacciones Insecticide-lnD. Todos tienen un menor AIC, en particular el modelo probit. Se puede observar que en estos casos incluso InsecticideB podría ser estadísticamente significativo si consideramos un nivel de significancia estadística del 10%. Si consideramos el modelo reducido, el modelo probit tiene un mejor desempeño por su AIC y por ser más parsimonioso, con componente lineal o sistemático $\beta_0+\beta_1x_1+\beta_2x_2+\beta_3x_3=-2.623+0.209InsecticideB+1.672InsecticideC+1.690lnD$. 
 
 
 
@@ -185,20 +184,20 @@ Akaike Inf. Crit. & 789.443 & 789.280 & 800.458 & 786.491 & 785.454 & 799.571 \\
 
 
 
-La prueba de hipótesis global con la chi-cuadrada del modelo **probit reducido** muestra un valor Chisq de 264.5619	y un p-value muy pequeño (Pr(>Chisq): 4.633875e-57), mucho menor a 0.05, es decir se rechaza la hipótesis nula, por lo que podríamos proceder con el análisis del modelo. Sin embargo, antes de continuar, revisaremos en el siguiente inciso algunos otros modelos mejores por su AIC y simplicidad interpretativa o parsimonia. 
+La prueba de hipótesis global con la chi-cuadrada del modelo **probit reducido** muestra un valor Chisq de 264.5619	y un p-value muy pequeño (Pr(>Chisq): 4.633875e-57), mucho menor a 0.05, es decir se rechaza la hipótesis nula, por lo que podríamos proceder con el análisis de los supuestos del modelo. Antes de continuar, revisaremos en el siguiente inciso algunos modelos que incluyan $(lnD)^2$, y veremos si tienen menor AIC. 
 
 
 
-```{r, echo=FALSE, message=FALSE}
+```{r, echo=FALSE, message=FALSE, include=FALSE}
 #La primera prueba que se debe realizar es 
 #la similar a la prueba asociada a la tabla ANOVA en regresión lineal múltiple
 
-# library(multcomp)
-# K=matrix(c(0,1,0,0,
-#            0,0,1,0,
-#            0,0,0,1), ncol=4, nrow=3, byrow=TRUE)
-# m=c(0,0,0)
-# summary(glht(fitprob_s, linfct=K, rhs=m), test=Chisqtest())  #Chisqtest() es apropiada para datos donde y no es continua
+library(multcomp)
+K=matrix(c(0,1,0,0,
+           0,0,1,0,
+           0,0,0,1), ncol=4, nrow=3, byrow=TRUE)
+m=c(0,0,0)
+summary(glht(fitprob_s, linfct=K, rhs=m), test=Chisqtest())  #Chisqtest() es apropiada para datos donde y no es continua
 
 # Se rechaza H0, lo que implica que se puede proceder
 # al análisis del modelo
@@ -208,9 +207,9 @@ La prueba de hipótesis global con la chi-cuadrada del modelo **probit reducido*
 
 ### iii) Ajuste modelos para datos binarios 2
 
-A continuación incluiremos, adicional a los términos de las covariables anteriores, a la interacción de Insecticide con el término cuadrádico (lnD)^2. Para las ligas logit y probit, ninguna las intersecciones con lnD y (lnD)^2 rechazan la hipótesis nula, es decir ninguna aparece estadísticamente significativa porque el p-value asociado es mayor a 0.05. Para el caso del cloglog, la única intersección estadísticamente significativa al 5% de significancia estadística es InsecticideC:lnD. En los tres modelos se rechaza la hipótesis nula para el intercepto, InsecticideC, lnD y lnD2. Los AIC son  786.61, 786.92 y 786.06 para los modelos con liga logit, probit y cloglog, respectivamente, lo que indica que el mejor modelo por el criterio AIC es el de la liga cloglog. 
+A continuación incluiremos, adicional a los términos de las covariables anteriores, a la interacción de Insecticide con el término cuadrádico (lnD)^2. Para las ligas logit y probit, ninguna de las intersecciones con lnD y (lnD)^2 rechazan la hipótesis nula, es decir ninguna aparece estadísticamente significativa porque el p-value asociado es mayor a 0.05. Para el caso del cloglog, la única intersección estadísticamente significativa al 5% de significancia estadística es InsecticideC:lnD. En los tres modelos se rechaza la hipótesis nula para el intercepto, InsecticideC, lnD y lnD2. Los AIC son  786.61, 786.92 y 786.06 para los modelos con liga logit, probit y cloglog, respectivamente, lo que indica que el mejor modelo por el criterio AIC es el de la liga cloglog. 
 
-Adicionalmente, se procedió a hacer un modelo reducido con sólo efectos principales, sin estas interacciones y el resultado es que hay menores AIC para los tres modelos considerando las variables explicativas Insecticide, lnD y lnD2, sin las interacciones. Por ejemplo, el menor AIC es de 780.01 para el caso de la liga probit, el siguiente Cuadro muestra los resultados. 
+Adicionalmente, se procedió a hacer un modelo reducido con sólo efectos principales, sin estas interacciones y el resultado es que hay menores AIC para los tres modelos considerando las variables explicativas Insecticide, lnD y lnD2, sin las interacciones. Por ejemplo, el menor AIC es de 780.01 para el caso de la liga probit, con componente lineal o sistemático $\beta_0+\beta_1x_1+\beta_2x_2+\beta_3x_3+\beta_4x_4=-3.920+0.195InsecticideB+1.701InsecticideC+3.775lnD-0.750(lnD)^2$.  
 
 
 
@@ -312,13 +311,6 @@ Akaike Inf. Crit. & 786.613 & 786.919 & 786.055 & 780.196 & 780.011 & 793.208 \\
 
 
 
-
-
-
-
-
-
-
 ```{r, echo=FALSE}
 #Además con el modelo completo también los criterios AIC y BIC coinciden
 # ("AIC:logit probit cloglog")
@@ -328,34 +320,58 @@ Akaike Inf. Crit. & 786.613 & 786.919 & 786.055 & 780.196 & 780.011 & 793.208 \\
 ```
 
  
+La prueba de hipótesis global con la chi-cuadrada del modelo **probit reducido** muestra un valor Chisq de 254.2325	y un p-value muy pequeño (Pr(>Chisq): 7.974736e-54), mucho menor a 0.05, es decir se rechaza la hipótesis nula, por lo que podemos proceder con el análisis de los supuestos de este modelo reducido más sencillo con el menor AIC.   
 
 
-La prueba de hipótesis global con la chi-cuadrada del modelo **probit reducido** muestra un valor Chisq de 254.2325	y un p-value muy pequeño (Pr(>Chisq): 7.974736e-54), mucho menor a 0.05, es decir se rechaza la hipótesis nula, por lo que podemos proceder con el análisis de este modelo reducido más sencillo, de died en función de Insecticide (A,B y C, con A como de referencia), lnD  y lnD2.   
-
-
-```{r, echo=FALSE, message=FALSE}
+```{r, echo=FALSE, message=FALSE, include=FALSE}
 #La primera prueba que se debe realizar es 
 #la similar a la prueba asociada a la tabla ANOVA en regresión lineal múltiple
 
-# library(multcomp)
-# K=matrix(c(0,1,0,0,0,
-#            0,0,1,0,0,
-#            0,0,0,1,0,
-#            0,0,0,0,1), ncol=5, nrow=4, byrow=TRUE)
-# m=c(0,0,0,0)
-# summary(glht(fitprob_s, linfct=K, rhs=m), test=Chisqtest())  #Chisqtest() es apropiada para datos donde y no es continua
+library(multcomp)
+K=matrix(c(0,1,0,0,0,
+           0,0,1,0,0,
+           0,0,0,1,0,
+           0,0,0,0,1), ncol=5, nrow=4, byrow=TRUE)
+m=c(0,0,0,0)
+summary(glht(fitprob_s, linfct=K, rhs=m), test=Chisqtest())  #Chisqtest() es apropiada para datos donde y no es continua
 
 # Se rechaza H0, lo que implica que se puede proceder
 # al análisis del modelo
 ```
 
 
+Se puede notar que una ventaja de introducir el componente $(lnD)^2$ es que los AIC disminuyeron, por lo que nos quedamos con este modelo probit reducido, para los análisis subsecuentes. 
+
+```{r, echo=FALSE}
+# Se incluye cierta aleatorización para datos binarios
+library(statmod)
+fitlogitqr <- qresid(fitprob_s)
+#qqnorm( fitlogitqr, las=1 ); qqline( fitlogitqr) 
+lilKS<-nortest::lillie.test(fitlogitqr)
+Shapiro<-shapiro.test(fitlogitqr)
+```
+
+En la prueba de normalidad ``Lilliefors (Kolmogorov-Smirnov) normality test`` tenemos que el p-value es de `r lilKS[2]`, por lo que no se rechaza la hipótesis nula de normalidad. Por otra parte, pa la prueba de normalidad de ``Shapiro-Wilk normality test`` el p-value es de `r Shapiro[2]`, lo que también no rechaza la hipótesis nula de normalidad. Esto se observa en la siguiente Gráfica. 
+
+
+
+```{r, echo=FALSE, warning=FALSE,message=FALSE, fig.width = 8, fig.height = 4}
+library(DHARMa)  #Los residuales simulados también son útiles en este caso
+set.seed(123)
+fitprobitres <- simulateResiduals(fittedModel = fitprob_s)
+plot(fitprobitres)
+```
+
+```{r, echo=FALSE}
+deviance_df<-deviance(fitprob_s)/df.residual(fitprob_s)
+```
+
+
+
+La regla de dedo para verificar el parámetro de dispersión de 1, con la devianza de residuales entre grados de libertad, muestra un valor de `r deviance_df`, lo cual se acerca a 1. 
+
 
 ### iv) Modelo adecuado. Comparaciones, probabilidades y prueba de hipótesis.
-
-
-Las estimaciones de las probabilidades de que los insectos mueran (prob_s), dados el insecticida, lnD y lnD2, son las siguientes para el modelo probit reducido. Se puede observar que para el insecticida A, la probabilidad de muerte mayor al 70% se da hasta la dosis de entre 6 y 8 miligramos, mientras que para el insecticida B se da entre 4.59 a 6 mg, y finalmente para el insecticida C, se da entre los 2 a 2.64 miligramos.    
-
 
 
 ```{r, echo=FALSE}
@@ -365,13 +381,13 @@ newdata$prob_s <- predict(fitprob_s, newdata[,1:3], type = c("response"), se.fit
 
 newdata$Deposit<-exp(newdata$lnD)
 
-kable(newdata)
+#kable(newdata)
 
 ```
 
 
 
-La siguiente gráfica muestra en el eje x la dosis del insecticida (Deposit) y en el eje y izquierdo la proporción de insectos muertos observados (se generó la variable p_Killed) para cada combinación dosis-insecticida (Deposit-Insecticide ), distinguiendo con una figura distinta el insecticida asociado. Adicionalmente se agrega un eje derecho, con las probabilidades obtenidas con el modelo probit para cada dosis e insecticida. El color **\textcolor{orange}{coral}**  indica los datos de la tasa de mortalidad (p_Killed) y el color **\textcolor{cyan}{deepskyblue}** indica los valores de las probabilidades calculadas con el modelo (probit). Con el modelo se obtuvieron probabilidades muy cercanas a las proporciones o tasas de mortalidad observadas, especialmente para el insecticida C (cuadros).     
+La siguiente gráfica muestra en el eje $x$ la dosis del insecticida (Deposit) y en el eje $y$ izquierdo la proporción de insectos muertos observados (se generó la variable p_Killed) para cada combinación dosis-insecticida (Deposit-Insecticide), distinguiendo con una figura distinta el insecticida asociado. Adicionalmente se agrega un eje $y$ derecho, con las probabilidades obtenidas con el modelo probit para cada dosis e insecticida. El color **\textcolor{orange}{coral}** (\textcolor{orange}{$\bullet$}) indica los datos de la tasa de mortalidad (p_Killed) y el color **\textcolor{cyan}{deepskyblue}** (\textcolor{cyan}{$\bullet$}) indica los valores de las probabilidades calculadas con el modelo (probit). Con el modelo se obtuvieron probabilidades muy cercanas a las proporciones o tasas de mortalidad observadas, especialmente para el insecticida C ($\blacksquare$).     
 
 
 ```{r, echo=FALSE}
@@ -381,19 +397,117 @@ datosfin<-cbind(datos,newdata1)
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.width = 6, fig.height = 3}
 ggplot(data = datosfin, aes(x = Deposit))+
    geom_point(aes(y = p_Killed, colour="coral", shape =Insecticide )) +
    geom_point(aes(y = prob_s, colour="deepskyblue", shape = Insecticide)) +
-   scale_y_continuous(sec.axis = sec_axis(~ .*1,  name="probit")) + theme_classic()
+   scale_y_continuous(sec.axis = sec_axis(~ .*1,  name="probit")) + theme_bw()
+
+```
+
+
+A continuación se muestra un cuadro de la dosis mínima para cada insecticida con la que se puede indicar que el 70% de los insectos se muere. Para ello recordemos que $P(died; A)=\beta_0+\beta_3lonD+\beta_4(lnD)^2=0.7$, $P(died; B)=\beta_0+\beta_1InsecticidaB+\beta_3lnD+\beta_4(lnD)^2=0.7$ y $P(died; C)=\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2=0.7$, por lo que resolviendo para cada insecticida, se obtienen los respectivos valores de $lnD$ y por lo tanto de $D$ que es la dósis en mg (Deposit). Es decir, para A, resolveremos $\beta_4(lnD)^2+\beta_3lnD+(\beta_0-0.7)$, para B $\beta_4(lnD)^2+\beta_3lnD+ (\beta_0+\beta_1-0.7)$ y para C $\beta_4(lnD)^2+\beta_3lnD+(\beta_0+\beta_2-0.7)$. 
+
+
+
+```{r, echo=FALSE}
+#Resolver función cuadrática 
+quad <- function(a, b, c)
+{
+  a <- as.complex(a)
+  answer <- c((-b + sqrt(b^2 - 4 * a * c)) / (2 * a),
+              (-b - sqrt(b^2 - 4 * a * c)) / (2 * a))
+  if(all(Im(answer) == 0)) answer <- Re(answer)
+  if(answer[1] == answer[2]) return(answer[1])
+  answer
+}
+```
+
+
+
+```{r, echo=FALSE}
+#Para insecticida A
+a=fitprob_s$coefficients[5]
+b=fitprob_s$coefficients[4]
+c=fitprob_s$coefficients[1]-0.7
+
+D_A<-exp(quad(a, b, c))
+
+```
+
+
+
+```{r, echo=FALSE}
+#Para insecticida B
+a=fitprob_s$coefficients[5]
+b=fitprob_s$coefficients[4]
+c=fitprob_s$coefficients[1]+fitprob_s$coefficients[2]-0.7
+
+D_B<-exp(quad(a, b, c))
 
 ```
 
 
 
 
+```{r, echo=FALSE}
+#Para insecticida C
+a=fitprob_s$coefficients[5]
+b=fitprob_s$coefficients[4]
+c=fitprob_s$coefficients[1]+fitprob_s$coefficients[3]-0.7
+
+D_C<-exp(quad(a, b, c))
+
+```
 
 
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c c c c||} 
+ \hline
+ Insecticida & A & B & C \\ [0.5ex] 
+ \hline\hline
+ Dósis & `r D_A[1]` & `r D_B[1]` & `r D_C[1]` \\ [1ex] 
+ \hline
+\end{tabular}
+\caption{}
+\label{table:2}
+\end{table}
+
+
+
+
+
+
+
+Como se observa en la Gráfica anterior, el insecticida C es mejor, pues con menores dosis se tienen mayor probabilidad de muerte que A y B según el modelo probit. Además, como se mostró en el cuadro anterior, se encontró que la menor dósis mínima con la que el 70% se muere es para el insecticida C. A continuación mostramos una prueba de hipótesis que comprueba esto. Planteamos entonces que $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_3lnD+\beta_4(lnD)^2$ y    $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_1InsecticidaB +\beta_3lnD+\beta_4(lnD)^2$, de donde obtenemos la hipótesis nula $H_0: \beta_2InsecticidaC>0$ y $\beta_2InsecticidaC>\beta_1InsecticidaB$ y la hipótesis alternativa $H_a: \beta_2InsecticidaC\leq 0$ o $\beta_2InsecticidaC \leq \beta_1InsecticidaB$. 
+
+
+
+```{r, echo=FALSE, include=FALSE}
+library(multcomp)
+K=matrix(c(0,0,1,0,0,
+           0,-1,1,0,0), ncol=5, nrow=2, byrow=TRUE)
+m=c(0,0)
+summary(glht(fitprob_s, linfct=K, rhs=m, alternative="less"), test=Chisqtest())
+```
+
+Resultado: Chisq: $152.8355$ y p-value: $0.0000000000000000000000000000000006489137$. 
+
+
+A continuación se muestra la prueba de hipótesis que muestra si A y B tienen un desempeño similar. En este caso planteamos que $\beta_0+\beta_3lnD+\beta_4(lnD)^2=\beta_0+\beta_1InsecticidaB+\beta_3lnD+\beta_4(lnD)^2$ de donde tenemos la prueba de hipótesis $H_0: \beta_1InsecticidaB=0$ y la alternativa $H_a: \beta_1InsecticidaB\neq0$. 
+
+
+
+```{r, echo=FALSE, include=FALSE}
+library(multcomp)
+K=matrix(c(0,1,0,0,0), ncol=5, nrow=1, byrow=TRUE)
+m=c(0)
+summary(glht(fitprob_s, linfct=K, rhs=m), test=Chisqtest())
+```
+
+
+Resultado: Chisq: $2.652954$ y p-value: $0.1033576$. 
 
 
 
