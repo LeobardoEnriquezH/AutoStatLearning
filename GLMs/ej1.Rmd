@@ -129,7 +129,7 @@ library(report)
 
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.width = 6, fig.height = 3.5}
 par(mfrow = c(2, 2))
 plot(modelo1)
 ```
@@ -150,14 +150,36 @@ kable_styling(bootstrap_options = "striped", full_width = F)
 
 ### ii) Modelo adecuado con transformación de datos.
 
-Por simplicidad no consideraremos en el modelo interacciones entre las variables y se propone una transformación logarítmica de la variable dependiente. Para este modelo, se observa en el siguiente Cuadro que la prueba global $F$ rechaza la hipótesis nula, y las pruebas $t-student$ individuales de los coeficientes estimados también rechaza las hipótesis nulas de manera individual e independiente. 
 
 
 ```{r, echo=FALSE}
-modelo2=lm(data=datos, I(log(bpsystol)) ~ bmi + sex + age)
+BoxCoxm1<-car::powerTransform(modelo1)
+```
+De acuerdo con la prueba ``powerTransform`` para transformación Box-Cox, se tiene un valor de `r BoxCoxm1[6]`, por lo que podemos transformar la variable dependiente con un exponente de $-\frac{1}{2}$.  
+
+
+
+
+Por simplicidad no consideraremos en el modelo interacciones entre las variables y se propone una transformación Box Cox de la variable dependiente. Para este modelo, se observa en el siguiente Cuadro que la prueba global $F$ rechaza la hipótesis nula, y las pruebas $t-student$ individuales de los coeficientes estimados también rechaza las hipótesis nulas de manera individual e independiente. 
+
+
+
+```{r, echo=FALSE}
+#Modelo 2 con logaritmos
+#modelo2=lm(data=datos, I(log(bpsystol)) ~ bmi + sex + age)
 #summary(modelo2)
 #stargazer(modelo2)
 ```
+
+
+
+```{r, echo=FALSE}
+modelo2=lm(data=datos, I(bpsystol^(-1/2)) ~ bmi + sex + age)
+#summary(modelo2)
+#stargazer(modelo2)
+```
+
+
 
 \begin{table}[!htbp] \centering 
   \caption{} 
@@ -168,34 +190,34 @@ modelo2=lm(data=datos, I(log(bpsystol)) ~ bmi + sex + age)
 \hline \\[-1.8ex] 
  & \multicolumn{1}{c}{\textit{Dependent variable:}} \\ 
 \cline{2-2} 
-\\[-1.8ex] & I(log(bpsystol)) \\ 
+\\[-1.8ex] & I(bpsystol$\hat{\mkern6mu}$(-1/2)) \\ 
 \hline \\[-1.8ex] 
- bmi & 0.009$^{***}$ \\ 
-  & s.e: (0.002) \\ 
-  & t value: 6.161 \\ 
-  & Pr(>|t|): 2.41e-09 \\ 
+ bmi & $-$0.0004155$^{***}$ \\ 
+  & s.e: (6.686e-05) \\ 
+  & t value: -6.214 \\ 
+  & Pr(>|t|): 1.78e-09  \\ 
   & \\ 
- sex2 & $-$0.049$^{***}$ \\ 
-  & s.e: (0.015) \\ 
-  & t value: -3.311 \\ 
-  & Pr(>|t|): 0.00105 \\ 
+ sex2 & 0.002292$^{***}$ \\ 
+  & s.e: (6.514e-04) \\ 
+  & t value: 3.518 \\ 
+  & Pr(>|t|): 0.000504 \\ 
   & \\ 
- age & 0.004$^{***}$ \\ 
-  & s.e: (0.0004) \\ 
-  & t value: 8.403\\ 
-  & Pr(>|t|): 1.95e-15 \\ 
+ age & $-$0.0001636$^{***}$ \\ 
+  & s.e: (1.943e-05) \\ 
+  & t value: -8.421 \\ 
+  & Pr(>|t|): 1.73e-15 \\ 
   & \\ 
- Constant & 4.461$^{***}$ \\ 
-  & s.e: (0.042) \\ 
-  & t value: 107.347\\ 
-  & Pr(>|t|): < 2e-16 \\ 
+ Constant & 0.1059$^{***}$ \\ 
+  & s.e: (1.828e-03) \\ 
+  & t value: 57.927 \\ 
+  & Pr(>|t|): < 2e-16 \\
   & \\ 
 \hline \\[-1.8ex] 
 Observations & 295 \\ 
-R$^{2}$ & 0.321 \\ 
-Adjusted R$^{2}$ & 0.314 \\ 
-Residual Std. Error & 0.127 (df = 291) \\ 
-F Statistic & 45.922$^{***}$ (df = 3; 291); p-value: < 2.2e-16 \\ 
+R$^{2}$ & 0.325 \\ 
+Adjusted R$^{2}$ & 0.318 \\ 
+Residual Std. Error & 0.006 (df = 291) \\ 
+F Statistic & 46.691$^{***}$ (df = 3; 291); p-value: < 2.2e-16 \\ 
 \hline 
 \hline \\[-1.8ex] 
 \textit{Note:}  & \multicolumn{1}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
@@ -204,12 +226,10 @@ F Statistic & 45.922$^{***}$ (df = 3; 291); p-value: < 2.2e-16 \\
 
 
 
-
-
 En las siguientes gráficas podemos observar en **Residuals vs Fitted** que se conserva la linealidad, en **Q-Q Residuals** se observa una mejora con respecto a la normalidad de los errores, en **Scale-Location** se observa que hay homoscedasticidad, y en **Residuals vs Leverage** parece no haber outliers influyentes.  
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.width = 6, fig.height = 3.5}
 par(mfrow = c(2, 2))
 plot(modelo2)
 ```
@@ -227,20 +247,21 @@ kable_styling(bootstrap_options = "striped", full_width = F)
 ```
 
 
+
 ```{r, echo=FALSE}
+#Las AIC no son comparables directamente por la transformación hecha
 AICmodelo1<-AIC(modelo1)
 AICmodelo2<-AIC(modelo2)
+
 ```
 
 
-Cabe mencionar que el AIC del primer modelo fue de `r AICmodelo1` y del modelo final es de `r AICmodelo2`. Por lo que por este criterio también es un mejor modelo. 
+
 
 
 ### iii) Asociación entre masa corporal y presión arterial sistólica.
 
-Se puede indicar que para una persona de cierta edad y sexo, tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica. La relación es positiva o directa, es decir que a mayor índice de masa corporal, mayor es la presión arterial sistólica. En particular podemos notar que por cada unidad de incremento en la variable bmi, el log(bpsystol) aumenta en 0.009 para una persona con cierta edad y sexo. Esto es equivalente a decir que por cada unidad de incremento de mbi, bpsystol incrementa en $exp(0.009)=1.009$ unidades.            
 
-La prueba de hipótesis nula es que $\beta_1=0$ y la alternativa que $\beta_1\neq 0$, donde $\beta_1$ es el coeficiente o parámetro estimado asociado de la variable bmi. De acuerdo con la prueba $t-student$ tenemos un p-value asociado de $2.41e-09$, lo cual es mucho menor a 0.05, con lo que rechazamos la hipótesis nula. Por lo tanto $\beta_1 \neq 0$ y es estadísticamente significativo al nivel de confianza del 95%. 
 
 
 
@@ -251,18 +272,20 @@ A continuación presentaremos una gráfica resumen con la estimación puntual as
 
 
 ```{r, echo=FALSE}
-curva_ajustada_mujer30 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x + modelo2$coefficients[3] + modelo2$coefficients[4]*30)}
-curva_ajustada_hombre30 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x  + modelo2$coefficients[4]*30)}
+curva_ajustada_mujer30 <- function(x) {(modelo2$coefficients[1] + modelo2$coefficients[2]*x + modelo2$coefficients[3] + modelo2$coefficients[4]*30)^(-2)}
+curva_ajustada_hombre30 <- function(x) {(modelo2$coefficients[1] + modelo2$coefficients[2]*x  + modelo2$coefficients[4]*30)^(-2)}
 
-curva_ajustada_mujer50 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x + modelo2$coefficients[3] + modelo2$coefficients[4]*50)}
-curva_ajustada_hombre50 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x  + modelo2$coefficients[4]*50)}
+curva_ajustada_mujer50 <- function(x) {(modelo2$coefficients[1] + modelo2$coefficients[2]*x + modelo2$coefficients[3] + modelo2$coefficients[4]*50)^(-2)}
+curva_ajustada_hombre50 <- function(x) {(modelo2$coefficients[1] + modelo2$coefficients[2]*x  + modelo2$coefficients[4]*50)^(-2)}
 
-curva_ajustada_mujer64 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x + modelo2$coefficients[3] + modelo2$coefficients[4]*64)}
-curva_ajustada_hombre64 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x  + modelo2$coefficients[4]*64)}
+curva_ajustada_mujer64 <- function(x) {(modelo2$coefficients[1] + modelo2$coefficients[2]*x + modelo2$coefficients[3] + modelo2$coefficients[4]*64)^(-2)}
+curva_ajustada_hombre64 <- function(x) {(modelo2$coefficients[1] + modelo2$coefficients[2]*x  + modelo2$coefficients[4]*64)^(-2)}
 
 ```
 
-```{r, echo=FALSE}
+
+
+```{r, echo=FALSE, fig.width = 6, fig.height = 3}
 ggplot(datos, aes(bmi, bpsystol)) +
   geom_point() +
   geom_function(fun = curva_ajustada_mujer30, aes(linetype = "mujer de 30") ,col="skyblue", lwd = 1) +
