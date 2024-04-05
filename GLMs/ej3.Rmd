@@ -368,7 +368,7 @@ deviance_df<-deviance(fitprob_s)/df.residual(fitprob_s)
 
 
 
-La regla de dedo para verificar el parámetro de dispersión de 1, con la devianza de residuales entre grados de libertad, muestra un valor de `r deviance_df`, lo cual se acerca a 1. 
+La regla de dedo para verificar el **parámetro de dispersión** de 1, con la devianza de residuales entre grados de libertad, muestra un valor de `r deviance_df`, lo cual se acerca a 1. 
 
 
 ### iv) Modelo adecuado. Comparaciones, probabilidades y prueba de hipótesis.
@@ -399,14 +399,35 @@ datosfin<-cbind(datos,newdata1)
 
 ```{r, echo=FALSE, fig.width = 6, fig.height = 3}
 ggplot(data = datosfin, aes(x = Deposit))+
-   geom_point(aes(y = p_Killed, colour="coral", shape =Insecticide )) +
-   geom_point(aes(y = prob_s, colour="deepskyblue", shape = Insecticide)) +
+   geom_point(aes(y = p_Killed)) +
+   geom_line(aes(y = prob_s), by="") +
    scale_y_continuous(sec.axis = sec_axis(~ .*1,  name="probit")) + theme_bw()
 
 ```
 
 
-A continuación se muestra un cuadro de la dosis mínima para cada insecticida con la que se puede indicar que el 70% de los insectos se muere. Para ello recordemos que $P(died; A)=\beta_0+\beta_3lonD+\beta_4(lnD)^2=0.7$, $P(died; B)=\beta_0+\beta_1InsecticidaB+\beta_3lnD+\beta_4(lnD)^2=0.7$ y $P(died; C)=\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2=0.7$, por lo que resolviendo para cada insecticida, se obtienen los respectivos valores de $lnD$ y por lo tanto de $D$ que es la dósis en mg (Deposit). Es decir, para A, resolveremos $\beta_4(lnD)^2+\beta_3lnD+(\beta_0-0.7)$, para B $\beta_4(lnD)^2+\beta_3lnD+ (\beta_0+\beta_1-0.7)$ y para C $\beta_4(lnD)^2+\beta_3lnD+(\beta_0+\beta_2-0.7)$. 
+
+```{r, echo=FALSE}
+curva_ajustada_A <- function(x) {fitprob_s$coefficients[1] + fitprob_s$coefficients[4]*log(x) + fitprob_s$coefficients[5]*log(x)*log(x)}
+curva_ajustada_B <- function(x) {fitprob_s$coefficients[1] + fitprob_s$coefficients[2] + fitprob_s$coefficients[4]*log(x) + fitprob_s$coefficients[5]*log(x)*log(x)}
+curva_ajustada_C <- function(x) {fitprob_s$coefficients[1] + fitprob_s$coefficients[3] + fitprob_s$coefficients[4]*log(x) + fitprob_s$coefficients[5]*log(x)*log(x)}
+
+
+```
+
+
+
+```{r, echo=FALSE, fig.width = 6, fig.height = 3}
+ggplot(datos, aes(Deposit, p_Killed)) +
+  geom_point() +
+  geom_function(fun = curva_ajustada_A, aes(linetype = "Insecticida A") ,col="skyblue", lwd = 1) +
+  geom_function(fun = curva_ajustada_B, aes(linetype = "Insecticida B") ,col="green") +
+  geom_function(fun = curva_ajustada_C, aes(linetype = "Insecticida C") ,col="darkblue", lwd = 0.8)+ theme_bw()
+```
+
+
+
+A continuación se muestra un cuadro de la dosis mínima para cada insecticida con la que se puede indicar que el 70% de los insectos se muere. Para ello recordemos que $P(died; A)=\beta_0+\beta_3lnD+\beta_4(lnD)^2=0.7$, $P(died; B)=\beta_0+\beta_1InsecticidaB+\beta_3lnD+\beta_4(lnD)^2=0.7$ y $P(died; C)=\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2=0.7$, por lo que resolviendo para cada insecticida, se obtienen los respectivos valores de $lnD$ y por lo tanto de $D$ que es la dósis en mg (Deposit). Es decir, para A, resolveremos $\beta_4(lnD)^2+\beta_3lnD+(\beta_0-0.7)$, para B $\beta_4(lnD)^2+\beta_3lnD+ (\beta_0+\beta_1-0.7)$ y para C $\beta_4(lnD)^2+\beta_3lnD+(\beta_0+\beta_2-0.7)$. 
 
 
 
