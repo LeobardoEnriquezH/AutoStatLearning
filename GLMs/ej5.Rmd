@@ -1,7 +1,7 @@
 ---
-title: "Ejercicio 5"
-author: "Equipo"
-date: "2024-03-26"
+title: ""
+author: ""
+date: ""
 output: pdf_document
 ---
 
@@ -9,36 +9,267 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+```{r, echo=FALSE, include=FALSE}
+library(dplyr)      # Para el manejo de datos
+library(ggplot2)    # Para realizar gráficas
+library(kableExtra) # Para un mejor manejo de tablas
+library(GGally)     # Para realizar análisis descriptivo fácilmente
+library(multcomp)   # Para pruebas de hipótesis
+library(tidyverse)  # Más manejo de datos
+library(purrr)      # Para Map
+library(VGAM)       # Para los modelos multinomiales
+library(stargazer)  # Cuadros de regresión estilizadas
+library(lessR)      # Integra varias funciones estándar de R para datos
+```
+
+
+
 ## 5. Modelos lineales generalizados para datos categóricos
 
 
-La base de datos Preg5.csv contiene información sobre el nivel de satisfacción (Sat) de un conjunto de individuos que rentan una vivienda. El interés es identificar si entre los factores que definen este nivel están: el tipo de vivienda (Type), la percepción sobre su influencia en las decisiones sobre el mantenimiento de la vivienda (Infl) y el contacto que tienen con el resto de inquilinos (Cont).
-
-
-i. En este caso todas las covariables son categóricas, así que se puede obtener una gráfica que describa las frecuencias relativas para los tres niveles de satisfacción considerando cada cruce Type-Infl-Cont. Presente esta gráfica y comente lo que se observa.
-
-
-ii. Ajuste un modelo logístico multinomial considerando todas las posibles interacciones entre Type, Infl y Cont. Este modelo tiene demasiados parámetros y es de interés buscar si es posible considerar un modelo más simple. Ajuste un modelo logístico multinomial que incluya a las tres covariables Type, Infl y Cont, pero sin considerar interacciones. Realice una prueba de hipótesis para argumentar si es plausible considerar el modelo más simple. Complemente esto con medidas como AIC o BIC.
-
-Nota computacional. Para los modelos ajustados en vglm no es posible usar directamente el paquete multcomp, pero está disponible una función anova() que permite comparar dos modelos, siempre que estos estén anidados, por ejemplo: anova(mod1, mod2, test = ”LRT”, type = ”I”) o equivalentemente lrtest(mod1, mod2).
-
-
-iii. Considerando las covariables del modelo ajustado en ii) y notando que la variable Sat puede ser considerada como ordinal, ajuste un modelo logístico acumulativo (cumulative logit) sin considerar el supuesto de proporcionalidad. También ajuste un modelo que asuma el supuesto de proporcionalidad y dado que este último está anidado en el primero, realice una prueba de hipótesis para analizar si es plausible asumir este modelo más sencillo. Complemente su decisión con medidas como AIC o BIC.
-
-
-iv. Usando el AIC o BIC, seleccione sólo un modelo entre los ajustados en ii) y iii). Con ese modelo, trate de interpretar los resultados. Por ejemplo, puede apoyarse de una gráfica como la realizada en i), pero donde se presenten las probabilidades estimadas para cada nivel de satisfacción. Por simplicidad sólo analice el efecto que se observa al considerar la variable Infl, cuando se asume que la persona renta una vivienda tipo Apartment y tiene un nivel de contacto con otros inquilinos como High.
+La base de datos Preg5.csv contiene información sobre el nivel de satisfacción (Sat) de un conjunto de individuos que rentan una vivienda. El interés es identificar si entre los factores que definen este nivel están: el tipo de vivienda (Type: apartment, atrium, terrace y tower), la percepción sobre su influencia en las decisiones sobre el mantenimiento de la vivienda (Infl: high, medium y low) y el contacto que tienen con el resto de inquilinos (Cont: high y low). 
 
 
 
 
 ### i) Gráfica de frecuencias relativas
 
+```{r, echo=FALSE, include=FALSE}
+Datos<-read_csv("Preg5.csv", show_col_types = FALSE)
+```
 
 
-### ii) Modelo logístico multinomial
+```{r, echo=FALSE}
+Datos[sapply(Datos, is.character)] <- lapply(Datos[sapply(Datos, is.character)], as.factor)
+```
 
 
-### iii)  Modelo logístico acumulativo (cumulative logit)
+Todas las covariables son categóricas, a continuación mostramos la gráfica que describe las frecuencias relativas para los tres niveles de satisfacción considerando cada cruce Type-Infl-Cont (en ese orden). Podemos observar que la mayor satisfacción (74%) se presenta en Tower.High.High, que se refiere a vivir en una torre, con alta influencia sobre el mantenimiento de la vivienda y con alto contacto con el resto de los inquilinos. Por otro lado, el menor nivel de satisfacción (14%) corresponde a vivir en una terraza, con baja influencia sobre el mantenimiento de la vivienda y con alto nivel de contacto con los demás inquilinos. 
+
+
+
+```{r, echo=FALSE, message=FALSE, highlight=FALSE, fig.width = 6, fig.height = 4}
+Datos$TypeInflCont=factor(paste(Datos$Type, Datos$Infl, Datos$Cont, sep="."))
+v.Type.Infl.Cont=(Datos$TypeInflCont)
+v.Sat=Datos$Sat
+BarChart(x=v.Type.Infl.Cont , by=v.Sat, stack100=TRUE, srt=0, horiz=TRUE)
+
+```
+
+
+### ii) Modelo logístico multinomial nominal
+
+Ajustamos varios modelos para la variable dependiente de satisfacción (Sat), considerando en un modelo completo las intereacciones de la influencia sobre mantenimiento (Infl), tipo de vivienda (Type) y contacto con otros vecinos (Cont) y no considerando estas interacciones en un modelo reducido. Luego hacemos uso de la función anova que nos permite realizar análisis de varianza entre los modelos ajustados, planteando las hiótesis $H_0:\text{Podemos utilizar el modelo reducido}$ contra $H_a:\text{Debemos utilizar el modelo completo}$. El p-value asociado a la prueba es menor a 0.05, por lo que a un nivel de confianza de 95%, no tenemos evidencia para rechazar la hipótesis nula, por lo tanto podemos usar el modelo reducido.   
+
+
+```{r, echo=FALSE}
+#Primero ajustamos un modelo de Satisfacción (Sat) con todas las interacciones posibles
+#Entre influencia sobre mantenimiento, tipo de vivienda y contacto con otros vecinos (Infl, Type y Cont)
+
+fit_comp <- vglm(Sat ~ Infl*Type*Cont, #Fórmula
+                  family = multinomial(refLevel = "Low"), #Familia
+                  data = Datos) #Datos
+#Funciona de forma equivalente a los glm 
+
+#Posteriormente un modelo que no contenga ninguna interacción
+fit_no_int <- vglm(Sat ~ Infl+Type+Cont,
+                     family = multinomial(refLevel = "Low"),
+                     data = Datos)
+```
+
+
+
+
+```{r, echo=FALSE}
+#summary(fit_comp)
+#coef(fit_comp, matrix = TRUE) # Le indicamos que nos los muestre como matriz
+```
+
+
+
+```{r, echo=FALSE}
+#summary(fit_no_int)
+#coef(fit_no_int, matrix = TRUE) # Le indicamos que nos los muestre como matriz
+```
+
+
+
+```{r, echo=FALSE}
+#Escribimos los dos modelos y la salida es la prueba
+anova(fit_no_int, fit_comp, test="LRT", type = "I")
+```
+
+
+
+```{r, echo=FALSE}
+AIC_fit_comp<-AIC(fit_comp)
+AIC_fit_no_int<-AIC(fit_no_int)
+```
+
+
+Por otra parte, podemos calcular las AIC de ambos modelos, el resultado es que el AIC del modelo completo o con interacciones es de `r AIC_fit_comp` y para el modelo reducido es de `r AIC_fit_no_int`. Por lo tanto, se tiene una mayor evidencia de que el modelo reducido es mejor por tener un menor AIC. 
+
+
+```{r, echo=FALSE}
+summary(fit_no_int)
+```
+
+
+
+### iii)  Modelo logístico acumulativo (cumulative logit) ordinal
+
+Considerando las covariables del modelo reducido (sin interacciones) y la variable Sat como ordinal, ajustaremos un modelo logístico acumulativo (cumulative logit) sin considerar el supuesto de proporcionalidad (parallel) y otro asumiendo este supuesto.  Dado que este último está anidado en el primero, realizaremos una prueba de hipótesis con la función anova para analizar si es plausible asumir este modelo más sencillo, donde planteamos las hipótesis $H_0:\text{Podemos utilizar el modelo reducido}$ contra $H_a:\text{Debemos utilizar el modelo completo}$. El modelo reducido es aquel que tiene probabilidades proporcionales, así que nos quedaremos con ese modelo, pues no hay suficiente evidencia para rechazar la hipótesis nula. 
+
+
+
+```{r, echo=FALSE}
+Datos$Sat=factor(Datos$Sat, ordered=TRUE, levels = c("Low", "Medium", "High"))
+```
+
+
+
+```{r, echo=FALSE}
+#Ajustamos utilizando de nuevo la función vglm: modelo de probabilidades NO proporcionales
+fit_ord_nopar <- vglm(Sat ~ Infl+Type+Cont,
+                  family = cumulative(parallel = FALSE), #La diferencia es esta
+                  data = Datos)
+#El orden viene de que respuesta es tipo factor y a esta le pusimos orden
+
+
+#Ajustamos utilizando de nuevo la función vglm: modelo de probabilidades proporcionales
+fit_ord_par <- vglm(Sat ~ Infl+Type+Cont,
+                  family = cumulative(parallel = TRUE), #La diferencia es esta
+                  data = Datos)
+
+```
+
+
+
+```{r, echo=FALSE}
+#coef(fit_ord_nopar, matrix=TRUE)
+```
+
+
+```{r, echo=FALSE}
+#summary(fit_ord_par)
+#coef(fit_ord_par, matrix=TRUE)
+```
+
+
+
+
+```{r, echo=FALSE}
+#Comparamos los modelos
+anova(fit_ord_par, fit_ord_nopar, type = "I")
+```
+
+
+
+```{r, echo=FALSE}
+AIC_fit_ord_par<-AIC(fit_ord_par)
+AIC_fit_ord_no_par<-AIC(fit_ord_nopar)
+```
+
+
+Por otro lado, el AIC del modelo logístico acumulativo sin supuesto de proporcionalidad es de `r AIC_fit_ord_no_par` y el AIC  para el modelo logístico acumulativo con el supuesto de proporcionalidad es de `r AIC_fit_ord_par`. Este menor AIC apoya la elección del modelo reducido logístico acumulativo con el supuesto de proporcionalidad.  
+
+
+
+
+```{r, echo=FALSE}
+summary(fit_ord_par)
+```
 
 
 ### iv) Selección del modelo e interpretación de resultados
+
+Comparando los AIC de todos los modelos,  elegimos el modelo logístico multinomial ordinal reducido acumulativo con proporcionalidad, que tiene el menor AIC de `r AIC_fit_ord_par`. A continuación se presenta en una gráfica las probabilidades estimadas para cada nivel de satisfacción (Sat: low, medium y high) al considerar la variable de influencia sobre el mantenimiento (Infl) y el nivel de contacto con otros inquilinos (Cont: high y low), cuando se asume que la persona renta una vivienda tipo Apartment.  
+
+Podemos observar que la Gráfica de la columna izquierda (Cont=low), cuando se tiene contacto bajo con el resto de inquilinos,  muestra las probabilidades de baja, media y alta satisfacción (Sat), considerando únicamente Apartment, y la influencia sobre el mantenimiento (Infl) bajo, medio y alto. En este caso, la probabilidad de baja satisfacción se asocia con mayor probailidad (52%) a Apartments con baja influencia sobre el mantenimiento y bajo contacto con los otras personas que habitan el lugar, y la mayor probabilidad (51%) se asocia con Apartments con alta influencia sobre el mantenimiento, a pesar del bajo contacto. Por otra parte, el la Gráfica de la columna derecha, se observa que hay una probabilidad de satisfacción muy alta (60%) asociada a Apartments donde hay una alta influencia en mantenimiento y alto contacto con los demás inquilinos del lugar, la probabilidad que la satisfacción sea baja en un Apartment de estas características es baja (17%).  
+
+
+
+```{r, echo=FALSE}
+#Agruparemos los datos desagrupados
+Datos$SatTypeInflCont=factor(paste(Datos$Sat, Datos$TypeInflCont, sep="."))
+by_SatTypeInflCont <- Datos %>% group_by(SatTypeInflCont)
+by_SatTypeInflCont<-by_SatTypeInflCont %>% tally()
+Dat <- data.frame(do.call('rbind', strsplit(as.character(by_SatTypeInflCont$SatTypeInflCont),'.',fixed=TRUE)))
+names(Dat) <- c("Sat", "Type", "Infl", "Cont")
+Dat$SatTypeInflCont<-factor(paste(Dat$Sat, Dat$Type, Dat$Infl, Dat$Cont,sep="."))
+DatosAg<-merge(Dat, by_SatTypeInflCont, by = "SatTypeInflCont", all = TRUE)
+```
+
+
+
+
+```{r, echo=FALSE}
+#Obtenemos las combinaciones, aprovechando la tabla agregada
+combinaciones <- unique(DatosAg[,3:5]) %>%
+  arrange(Type, Infl, Cont)
+
+#También podríamos obtenerla con los datos desagregados como:
+#combinaciones <- unique(datos[,1:2]) %>% arrange(Sexo, Edad)
+
+#Con esto aplicamos la función predict, con tipo "response" y tenemos:
+probas <- predict(fit_ord_par, combinaciones, type = "response")
+
+#Finalmente, unimos las combinaciones con sus probabilidafes
+datos_modelo <- data.frame(cbind(combinaciones, probas))
+```
+
+
+
+```{r, echo=FALSE, fig.width = 6, fig.height = 5}
+#Obtenemos las combinaciones, con la tabla agregada
+
+DatosAg_Apartment<-DatosAg%>%filter(Type %in% "Apartment") #Filtramos apartment
+combinaciones <- unique(DatosAg_Apartment[,3:5]) %>%
+  arrange(Type, Infl, Cont)
+
+#También podríamos obtenerla con los datos desagregados como:
+#combinaciones <- unique(datos[,1:2]) %>% arrange(Sexo, Edad)
+
+#Con esto aplicamos la función predict, con tipo "response" y tenemos:
+probas <- predict(fit_ord_par, combinaciones, type = "response")
+
+#Finalmente, unimos las combinaciones con sus probabilidafes
+datos_modelo <- data.frame(cbind(combinaciones, probas))
+
+#Le cambiamos el nombre, para más adelante (en caso de que no aparezcan los nombres)
+colnames(datos_modelo)<-c("Type", "Infl", "Cont", "Low", "Medium", "High")
+
+#En este caso, necesitamos los datos en tipo long
+data_long <- datos_modelo %>% 
+  pivot_longer(cols = c(`Low`, Medium, `High`), 
+               names_to = "Sat", 
+               values_to = "Probabilidad") %>%
+#Aplicamos orden al tipo factor
+mutate("Respuesta"=factor(Sat, levels = c("Low", "Medium", "High")), "Infl"=factor(Infl, levels = c("Low", "Medium", "High")), "Cont"=factor(Cont, levels = c("Low",  "High")))
+
+#Con esto podemos crear la gráfica
+ggplot(data_long, aes(x = Infl, y = Probabilidad, fill = Sat)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8),
+           width = 0.7) +
+  geom_text(aes(label = round(Probabilidad, 2)), 
+            position = position_dodge(width = 0.8), 
+            vjust = -0.7, size = 3) +  # Añadir etiquetas con probabilidades
+  facet_grid(. ~ Cont) + #Este nos permite separar por Cont
+  labs(
+    title = "Probabilidades de Satisfacción (Sat) por Contacto (Cont) e Influencia (Infl)",
+    x = "Influencia (Infl) en mantenimiento del Apartment",
+    y = "Probabilidad"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1), 
+    legend.position = "top"
+  ) + theme_bw()
+
+```
+
+
+
+
+
+
