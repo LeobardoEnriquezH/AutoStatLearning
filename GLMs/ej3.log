@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.12) (preloaded format=pdflatex 2023.1.15)  5 APR 2024 02:25
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.12) (preloaded format=pdflatex 2023.1.15)  5 APR 2024 21:12
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -590,6 +590,9 @@ File: l3backend-pdftex.def 2022-10-26 L3 backend support: PDF output (pdfTeX)
 
 LaTeX Warning: Label `' multiply defined.
 
+
+LaTeX Warning: Label `' multiply defined.
+
 )
 \openout1 = `ej3.aux'.
 
@@ -664,15 +667,15 @@ File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 * layout: <same size as paper>
 * layoutoffset:(h,v)=(0.0pt,0.0pt)
 * modes: 
-* h-part:(L,W,R)=(54.2025pt, 505.89pt, 54.2025pt)
-* v-part:(T,H,B)=(54.2025pt, 686.56499pt, 54.2025pt)
+* h-part:(L,W,R)=(50.58878pt, 513.11745pt, 50.58878pt)
+* v-part:(T,H,B)=(50.58878pt, 693.79243pt, 50.58878pt)
 * \paperwidth=614.295pt
 * \paperheight=794.96999pt
-* \textwidth=505.89pt
-* \textheight=686.56499pt
-* \oddsidemargin=-18.06749pt
-* \evensidemargin=-18.06749pt
-* \topmargin=-55.06749pt
+* \textwidth=513.11745pt
+* \textheight=693.79243pt
+* \oddsidemargin=-21.68121pt
+* \evensidemargin=-21.68121pt
+* \topmargin=-58.68121pt
 * \headheight=12.0pt
 * \headsep=25.0pt
 * \topskip=10.0pt
@@ -752,19 +755,22 @@ LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 2
 (C:\Users\Leobardo\AppData\Local\Programs\MiKTeX\tex/latex/lm\t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-<ej3_files/figure-latex/unnamed-chunk-19-1.pdf, id=24, 578.16pt x 289.08pt>
+<ej3_files/figure-latex/unnamed-chunk-19-1.pdf, id=25, 578.16pt x 289.08pt>
 File: ej3_files/figure-latex/unnamed-chunk-19-1.pdf Graphic file (type pdf)
 <use ej3_files/figure-latex/unnamed-chunk-19-1.pdf>
 Package pdftex.def Info: ej3_files/figure-latex/unnamed-chunk-19-1.pdf  used on
  input line 288.
-(pdftex.def)             Requested size: 505.88875pt x 252.94437pt.
+(pdftex.def)             Requested size: 513.14044pt x 256.5702pt.
 [2] [3]
-<ej3_files/figure-latex/unnamed-chunk-23-1.pdf, id=42, 433.62pt x 216.81pt>
+<ej3_files/figure-latex/unnamed-chunk-23-1.pdf, id=42, 433.62pt x 180.675pt>
 File: ej3_files/figure-latex/unnamed-chunk-23-1.pdf Graphic file (type pdf)
 <use ej3_files/figure-latex/unnamed-chunk-23-1.pdf>
 Package pdftex.def Info: ej3_files/figure-latex/unnamed-chunk-23-1.pdf  used on
- input line 312.
-(pdftex.def)             Requested size: 433.63878pt x 216.81938pt.
+ input line 308.
+(pdftex.def)             Requested size: 433.61894pt x 180.67455pt.
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
 [4 <./ej3_files/figure-latex/unnamed-chunk-19-1.pdf> <./ej3_files/figure-latex/
 unnamed-chunk-23-1.pdf>] [5] (ej3.aux)
 
@@ -772,17 +778,17 @@ LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 15082 strings out of 476406
- 245642 string characters out of 2788151
- 1893787 words of memory out of 3000000
- 35047 multiletter control sequences out of 15000+600000
- 557168 words of font info for 116 fonts, out of 8000000 for 9000
+ 15075 strings out of 476406
+ 245567 string characters out of 2788151
+ 1892787 words of memory out of 3000000
+ 35046 multiletter control sequences out of 15000+600000
+ 556908 words of font info for 113 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  74i,11n,81p,1083b,451s stack positions out of 10000i,1000n,20000p,200000b,80000s
 {C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathit
-.enc}{C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ec.
-enc}{C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-math
-sy.enc}{C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-r
+.enc}{C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mat
+hsy.enc}{C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-
+ec.enc}{C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-r
 m.enc}<C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lm
 bx10.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm
 /lmbx12.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/type1/public
@@ -795,10 +801,10 @@ pe1/public/lm/lmr8.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/t
 ype1/public/lm/lmri8.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts
 /type1/public/lm/lmsy10.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fo
 nts/type1/public/lm/lmsy6.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/
-fonts/type1/public/lm/lmsy8.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiKTe
-X/fonts/type1/public/lm/lmtt10.pfb><C:/Users/Leobardo/AppData/Local/Programs/Mi
-KTeX/fonts/type1/public/amsfonts/symbols/msam10.pfb>
-Output written on ej3.pdf (5 pages, 317531 bytes).
+fonts/type1/public/lm/lmsy7.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiKTe
+X/fonts/type1/public/lm/lmsy8.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiK
+TeX/fonts/type1/public/lm/lmtt10.pfb>
+Output written on ej3.pdf (5 pages, 311876 bytes).
 PDF statistics:
  154 PDF objects out of 1000 (max. 8388607)
  14 named destinations out of 1000 (max. 500000)

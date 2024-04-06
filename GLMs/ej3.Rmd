@@ -3,7 +3,7 @@ title: ""
 author: ""
 date: ""
 output: pdf_document
-geometry: margin=0.75in
+geometry: margin=0.7in
 ---
 
 ```{r setup, include=FALSE}
@@ -387,7 +387,9 @@ newdata$Deposit<-exp(newdata$lnD)
 
 
 
-La siguiente gráfica muestra en el eje $x$ la dosis del insecticida (Deposit) y en el eje $y$ izquierdo la proporción de insectos muertos observados (se generó la variable p_Killed) para cada combinación dosis-insecticida (Deposit-Insecticide), distinguiendo con una figura distinta el insecticida asociado. Adicionalmente se agrega un eje $y$ derecho, con las probabilidades obtenidas con el modelo probit para cada dosis e insecticida. El color **\textcolor{orange}{coral}** (\textcolor{orange}{$\bullet$}) indica los datos de la tasa de mortalidad (p_Killed) y el color **\textcolor{cyan}{deepskyblue}** (\textcolor{cyan}{$\bullet$}) indica los valores de las probabilidades calculadas con el modelo (probit). Con el modelo se obtuvieron probabilidades muy cercanas a las proporciones o tasas de mortalidad observadas, especialmente para el insecticida C ($\blacksquare$).     
+
+
+La siguiente gráfica de dispersión muestra en el eje $x$ la dosis del insecticida (Deposit) y en el eje $y$ la proporción de insectos muertos observados (se generó la variable p_Killed) para cada combinación dosis-insecticida (Deposit-Insecticide), distinguiendo el insecticida asociado por colores. Adicionalmente se agregaron las curvas con las probabilidades obtenidas con el modelo probit para cada dosis e insecticida. Con el modelo se obtuvieron probabilidades muy cercanas a las proporciones o tasas de mortalidad observadas, especialmente para el insecticida C.     
 
 
 ```{r, echo=FALSE}
@@ -397,37 +399,13 @@ datosfin<-cbind(datos,newdata1)
 ```
 
 
-```{r, echo=FALSE, fig.width = 6, fig.height = 3}
-ggplot(data = datosfin, aes(x = Deposit))+
-   geom_point(aes(y = p_Killed)) +
-   geom_line(aes(y = prob_s), by="") +
-   scale_y_continuous(sec.axis = sec_axis(~ .*1,  name="probit")) + theme_bw()
-
+```{r, echo=FALSE, fig.width = 6, fig.height = 2.5}
+ggplot(data=datos, aes(x=Deposit,y=p_Killed, colour=Insecticide))+ geom_point() +theme_bw()+
+  geom_line(data=datosfin, aes(x=Deposit,y=prob_s, colour=Insecticide))+theme_bw()
 ```
 
 
-
-```{r, echo=FALSE}
-curva_ajustada_A <- function(x) {fitprob_s$coefficients[1] + fitprob_s$coefficients[4]*log(x) + fitprob_s$coefficients[5]*log(x)*log(x)}
-curva_ajustada_B <- function(x) {fitprob_s$coefficients[1] + fitprob_s$coefficients[2] + fitprob_s$coefficients[4]*log(x) + fitprob_s$coefficients[5]*log(x)*log(x)}
-curva_ajustada_C <- function(x) {fitprob_s$coefficients[1] + fitprob_s$coefficients[3] + fitprob_s$coefficients[4]*log(x) + fitprob_s$coefficients[5]*log(x)*log(x)}
-
-
-```
-
-
-
-```{r, echo=FALSE, fig.width = 6, fig.height = 3}
-ggplot(datos, aes(Deposit, p_Killed)) +
-  geom_point() +
-  geom_function(fun = curva_ajustada_A, aes(linetype = "Insecticida A") ,col="skyblue", lwd = 1) +
-  geom_function(fun = curva_ajustada_B, aes(linetype = "Insecticida B") ,col="green") +
-  geom_function(fun = curva_ajustada_C, aes(linetype = "Insecticida C") ,col="darkblue", lwd = 0.8)+ theme_bw()
-```
-
-
-
-A continuación se muestra un cuadro de la dosis mínima para cada insecticida con la que se puede indicar que el 70% de los insectos se muere. Para ello recordemos que $P(died; A)=\beta_0+\beta_3lnD+\beta_4(lnD)^2=0.7$, $P(died; B)=\beta_0+\beta_1InsecticidaB+\beta_3lnD+\beta_4(lnD)^2=0.7$ y $P(died; C)=\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2=0.7$, por lo que resolviendo para cada insecticida, se obtienen los respectivos valores de $lnD$ y por lo tanto de $D$ que es la dósis en mg (Deposit). Es decir, para A, resolveremos $\beta_4(lnD)^2+\beta_3lnD+(\beta_0-0.7)$, para B $\beta_4(lnD)^2+\beta_3lnD+ (\beta_0+\beta_1-0.7)$ y para C $\beta_4(lnD)^2+\beta_3lnD+(\beta_0+\beta_2-0.7)$. 
+A continuación se muestra un cuadro de la dosis mínima para cada insecticida con la que se puede indicar que el 70% de los insectos se muere. Para ello recordemos que $\Phi^{-1}(0.7)=\beta_0+\beta_3lnD+\beta_4(lnD)^2$, $\Phi^{-1}(0.7)=\beta_0+\beta_1InsecticidaB+\beta_3lnD+\beta_4(lnD)^2$ y $\Phi^{-1}(0.7)=\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2$, por lo que resolviendo para cada insecticida, se obtienen los respectivos valores de $lnD$ y por lo tanto de $D$ que es la dósis en mg (Deposit). Es decir, para A, resolveremos $\beta_4(lnD)^2+\beta_3lnD+(\beta_0-\Phi^{-1}(0.7))$, para B $\beta_4(lnD)^2+\beta_3lnD+ (\beta_0+\beta_1-\Phi^{-1}(0.7))$ y para C $\beta_4(lnD)^2+\beta_3lnD+(\beta_0+\beta_2-\Phi^{-1}(0.7))$. 
 
 
 
@@ -450,7 +428,7 @@ quad <- function(a, b, c)
 #Para insecticida A
 a=fitprob_s$coefficients[5]
 b=fitprob_s$coefficients[4]
-c=fitprob_s$coefficients[1]-0.7
+c=fitprob_s$coefficients[1]-qnorm(.7)
 
 D_A<-exp(quad(a, b, c))
 
@@ -462,7 +440,7 @@ D_A<-exp(quad(a, b, c))
 #Para insecticida B
 a=fitprob_s$coefficients[5]
 b=fitprob_s$coefficients[4]
-c=fitprob_s$coefficients[1]+fitprob_s$coefficients[2]-0.7
+c=fitprob_s$coefficients[1]+fitprob_s$coefficients[2]-qnorm(.7)
 
 D_B<-exp(quad(a, b, c))
 
@@ -475,7 +453,7 @@ D_B<-exp(quad(a, b, c))
 #Para insecticida C
 a=fitprob_s$coefficients[5]
 b=fitprob_s$coefficients[4]
-c=fitprob_s$coefficients[1]+fitprob_s$coefficients[3]-0.7
+c=fitprob_s$coefficients[1]+fitprob_s$coefficients[3]-qnorm(.7)
 
 D_C<-exp(quad(a, b, c))
 
@@ -488,20 +466,17 @@ D_C<-exp(quad(a, b, c))
  \hline
  Insecticida & A & B & C \\ [0.5ex] 
  \hline\hline
- Dósis & `r D_A[1]` & `r D_B[1]` & `r D_C[1]` \\ [1ex] 
+ Dósis Mínima & `r D_A[1]` & `r D_B[1]` & `r D_C[1]` \\ [1ex] 
  \hline
 \end{tabular}
 \caption{}
-\label{table:2}
+\label{}
 \end{table}
 
 
 
 
-
-
-
-Como se observa en la Gráfica anterior, el insecticida C es mejor, pues con menores dosis se tienen mayor probabilidad de muerte que A y B según el modelo probit. Además, como se mostró en el cuadro anterior, se encontró que la menor dósis mínima con la que el 70% se muere es para el insecticida C. A continuación mostramos una prueba de hipótesis que comprueba esto. Planteamos entonces que $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_3lnD+\beta_4(lnD)^2$ y    $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_1InsecticidaB +\beta_3lnD+\beta_4(lnD)^2$, de donde obtenemos la hipótesis nula $H_0: \beta_2InsecticidaC>0$ y $\beta_2InsecticidaC>\beta_1InsecticidaB$ y la hipótesis alternativa $H_a: \beta_2InsecticidaC\leq 0$ o $\beta_2InsecticidaC \leq \beta_1InsecticidaB$. 
+Como se observa en la Gráfica anterior, el insecticida C es mejor, pues con menores dosis se tienen mayor probabilidad de muerte que A y B según el modelo probit. Además, como se mostró en el cuadro anterior, se encontró que la menor dósis mínima con la que el 70% se muere es para el insecticida C. A continuación mostramos una prueba de hipótesis que comprueba esto. Planteamos entonces que $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_3lnD+\beta_4(lnD)^2$ y    $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_1InsecticidaB +\beta_3lnD+\beta_4(lnD)^2$, de donde obtenemos la hipótesis nula $H_0: \beta_2InsecticidaC<0$ o $\beta_2InsecticidaC<\beta_1InsecticidaB$ y la hipótesis alternativa $H_a: \beta_2InsecticidaC > 0$ y $\beta_2InsecticidaC > \beta_1InsecticidaB$. 
 
 
 
@@ -510,10 +485,10 @@ library(multcomp)
 K=matrix(c(0,0,1,0,0,
            0,-1,1,0,0), ncol=5, nrow=2, byrow=TRUE)
 m=c(0,0)
-summary(glht(fitprob_s, linfct=K, rhs=m, alternative="less"), test=Chisqtest())
+summary(glht(fitprob_s, linfct=K, rhs=m, alternative="greater"), test=Chisqtest())
 ```
 
-Resultado: Chisq: $152.8355$ y p-value: $0.0000000000000000000000000000000006489137$. 
+Resultado: Chisq: $152.8355$ y p-value: $6.489137$e-34. Lo que rechaza la hipótesis nula, es decir no hay suficiente evidencia para asegurar que el insecticida C tenga menor efectividad que A y B.  
 
 
 A continuación se muestra la prueba de hipótesis que muestra si A y B tienen un desempeño similar. En este caso planteamos que $\beta_0+\beta_3lnD+\beta_4(lnD)^2=\beta_0+\beta_1InsecticidaB+\beta_3lnD+\beta_4(lnD)^2$ de donde tenemos la prueba de hipótesis $H_0: \beta_1InsecticidaB=0$ y la alternativa $H_a: \beta_1InsecticidaB\neq0$. 
@@ -528,7 +503,7 @@ summary(glht(fitprob_s, linfct=K, rhs=m), test=Chisqtest())
 ```
 
 
-Resultado: Chisq: $2.652954$ y p-value: $0.1033576$. 
+Resultado: Chisq: $2.652954$ y p-value: $0.1033576$. Lo que no rechaza la hipótesis nula, es decir no hay suficiente evidencia para rechazar que el insecticida A tenga el mismo desempeño que B.  
 
 
 
