@@ -1,0 +1,195 @@
+---
+title: ""
+author: ''
+date: ""
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, fig.width = 6, fig.height = 2.9)
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+library(tidyverse)
+library(kableExtra)
+library(ggplot2)
+library(cowplot)
+library(stargazer)
+library(knitr)
+library(dplyr)
+library(readr)
+library(car)
+library(multcomp)
+library(MASS)
+```
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+data1 <- read_csv("Preg1B.csv")
+```
+
+## 2. Modelos lineales generalizados para datos continuos
+
+
+Consideraremos la base de datos ``Preg1B.csv`` con información sobre 295 pacientes seleccionados de forma aleatoria. Se desea analizar si existe una asociación entre la presión arterial sistólica (bpsystol) y el índice de masa corporal (bmi), considerando el sexo (sex: 1-hombre, 2-mujer, con hombre como referencia) y la edad (age) de los pacientes. 
+
+
+
+### i) Exploración de modelos con variable dependiente continua.
+
+De la información que tenemos asumiremos que la variable bmi es un factor que se puede controlar lo cual nos llevaría a deducir que el bmi influye de manera directa en la presión sistolica de una persona, de lo contrario no podríamos hacer ninguna afirmación que avale que esto en verdad sucede. Entonces veamos como se ven los datos.
+
+```{r,echo=FALSE,message=F,warning=FALSE}
+plot(data1$bmi,data1$bpsystol, xlab = "BMI", ylab = "Presión sistolica", col = "green4")
+```
+
+De la gráfica podemos observar que la variable de la presión sistolica siempre es positiva y en general no se tiene una varianza con muchos cambios, es decir, los datos parecen agruparse con una varianza constante, ademas estos se encuentran mas agrupados del lado izquierdo, entre un rango de 10 a 30 bmi. Dado la información que obtuvimos consideraremos ajustar un GLM con familia inversa gaussiana y función liga identidad dado que los datos tienen una cola pesada del lado izquierdo.
+
+Ya que verificamos que la variable respuesta tiene una cola pesada procederemos a ajustas el GLM con la función liga mencionada anteriormente.
+
+
+```{r,echo=FALSE}
+data1$sex <- as.factor(data1$sex)
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+glm_fit = glm(bpsystol ~ bmi + sex + age, data = data1, family = inverse.gaussian(link = "identity"))
+summary(glm_fit)
+```
+
+Ya que ajustamos el modelo escribiremos de forma matemática como se ve el modelo:
+
+\begin{center}
+$log(bpsystol_i)$ = $\beta_0$ + $\beta_1$$BMI_i$ + sex + age con función liga: $\mu_i$ = $g(\theta)$ = $1/\theta_i$ donde $\theta$ = bpsystol.
+\end{center}
+
+ El criterio que usamos para usar este modelo se baso en la verificación de la distribución de la variable dependiente y así poder escoger que función liga seria mejor para ajustar el modelo, ademas se comparo el AIC de este modelo con otros 2 modelo en los que se cambiaba la función liga, de dicha comparación fue este modelo el que mejor AIC obtuvo de los 3.
+
+
+
+Ahora haremos la verificación de supuestos:
+
+Lo primero que haremos sera realizar la prueba similar a la ANOVA de un modelo lineal múltiple.
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+K=matrix(c(0,1,0,0,
+           0,0,1,0,
+           0,0,0,1), ncol=4, nrow=3, byrow=TRUE)
+m=c(0,0,0)
+summary(glht(glm_fit, linfct=K, rhs=m), test=Chisqtest())
+```
+
+Tenemos un p-value menor que 0.05, entonces rechazamos H0 y podemos proceder al análisis del modelo.
+
+
+```{r,echo=T}
+pchisq(glm_fit$deviance, df=glm_fit$df.residual, lower.tail=FALSE)
+```
+De los resultados obtenidos de la prueba pchisq tenemos un valor de 1, el cual nos indica que no hay evidencia suficiente para rechazar la hipótesis nula. Esto significa que el modelo ajustado proporciona un buen ajuste a los datos según la deviance observada y los grados de libertad residuales.
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+library(ggplot2)
+library(ggResidpanel)
+library(DHARMa)
+library(SuppDists)
+resid_panel(glm_fit, plots=c("all"),scale = 1)
+set.seed(123)
+fit2res <- simulateResiduals(fittedModel = glm_fit)
+plot(fit2res)
+par(mfrow = c(2, 2))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+### ii.1) Asociación entre masa corporal y presión arterial sistólica y  estimación puntual.
+
+
+
+Usando la información que obtuvimos del modelo podemos afirmar que el sexo y edad de una persona con un IMC alto va a afectar directamente la presion sistolica de la misma, resultado que podríamos decir era el esperado.
+
+Dicho resultado lo podemos denotar con las siguientes pruebas de hipótesis:
+
+\begin{center}
+$H_0: \beta_1 = 0$ vs $H_a: \beta_1 \neq 0$
+\end{center}
+
+Tomando una alfa de 0.05 y dado que obtuvimos un p-value menor a esta alfa, entonces rechazamos la hipótesis nula, por lo tanto el parámetro $\beta_1$ es estadisticamente significativo.
+
+Dado que lo que buscamos responder es si tener un indice de masa corporal alto se relaciona con tener una presion sistolica alta agregaremos una prueba de hipótesis con dirección.
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+K=matrix(c(0,1), ncol=4, nrow=3, byrow=TRUE)
+m=c(0)
+summary(glht(glm_fit, linfct=K, rhs=m, alternative="greater"))
+```
+Dado el p-value para la variable $\beta_1$ que nos interesa es muy pequeño tenemos que vamos a rechazar la H0, por lo que podemos decir que si existe un incremento en la presion arterial sistolica de las personas que tienen un bmi mas alto.
+
+## ii.2)  Gráfica Resumen.
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+curva_ajustada_mujer30 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x + glm_fit$coefficients[3] + glm_fit$coefficients[4]*30}
+
+curva_ajustada_hombre30 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x  + glm_fit$coefficients[4]*30}
+
+curva_ajustada_mujer50 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x + glm_fit$coefficients[3] + glm_fit$coefficients[4]*50}
+
+curva_ajustada_hombre50 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x  + glm_fit$coefficients[4]*50}
+
+curva_ajustada_mujer64 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x + glm_fit$coefficients[3] + glm_fit$coefficients[4]*64}
+
+curva_ajustada_hombre64 <- function(x) {glm_fit$coefficients[1] + glm_fit$coefficients[2]*x  + glm_fit$coefficients[4]*64}
+```
+
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE}
+ggplot(data1, aes(bmi, bpsystol)) +
+  geom_point() +
+  geom_function(fun = curva_ajustada_mujer30, aes(linetype = "mujer de 30") ,col="skyblue", lwd = 1) +
+  geom_function(fun = curva_ajustada_hombre30, aes(linetype = "hombre de 30") ,col="green") +
+  geom_function(fun = curva_ajustada_mujer50, aes(linetype = "mujer de 50") ,col="darkblue", lwd = 0.8) +
+  geom_function(fun = curva_ajustada_hombre50, aes(linetype = "hombre de 50") ,col="darkgreen") +
+  geom_function(fun = curva_ajustada_mujer64, aes(linetype = "mujer de 64") ,col="red") +
+  geom_function(fun = curva_ajustada_hombre64, aes(linetype = "hombre de 64") ,col="magenta") + theme_bw()
+```
+
+De los resultados es evidente que la presión sistólica de los hombres es mayor que la de las mujeres para los 3 grupos,por lo que desde ahí nos damos cuenta que el sexo ya es un factor que influye de manera directa en la presión sistólica de una persona, aunado a eso tenemos el factor de la edad donde es claro que a mayor edad la presion de una persona también sera mayor, algo que se mantiene para ambos casos es el factor del IMC donde se tiene que si este aumenta también crece la presion arterial sistólica.
+
+
+## iii) Comparativo modelo de regresión lineal múltiple contra modelo lineal generalizado. 
+
+Si bien ambos modelos obtenidos dieron buenos resultados y ademas similares, en el sentido de que ambos nos fueron de ayuda para explicar como las variables IMC,Edad,Sexo afectan la presion arterial sistolica de una persona es claro que la complejidad de un modelo fue mayor a la otra, para el caso del modelo usado en el ejercicio 1 usamos un modelo lineal simple con una transformación de logaritmo, lo cual lo hace mas fácil de interpretar que el modelo usado en este ejercicio el cual requirió de ajustar un GLM con familia inversa gaussiana y función liga identidad.
+
+Por lo tanto decidimos que es conveniente utilizar el modelo que obtuvimos en el ejercicio 1, el cual tuvo un AIC de $e^{-376.2099}$ $\approx$ 0 contra un AIC de 2484.1 del modelo empleado para este ejercicio, ademas es importante mencionar que las ventajas de emplear el modelo obtenido en el ejercicio anterior nos facilitan la interpretación del mismo.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
