@@ -1,7 +1,7 @@
 ---
-title: "Ejercicio 4"
-author: 'Equipo #'
-date: "2024-03-31"
+title: ""
+author: ''
+date: ""
 output: pdf_document
 ---
 
@@ -32,8 +32,9 @@ La base de datos Preg4.csv contiene información sobre el número de casos de c�
 
 
 
-# i) Gráfica de dispersión de grupos de edad e incidencia
+### i) Gráfica de dispersión de grupos de edad e incidencia
 
+Podemos apreciar de la siguiente Gráfica presentada que por cada grupo de edad la incidencia en cada ciudad va en aumento, por ejemplo en el grupo de edad de 40-54 la incidencia de cáncer esta por debajo de 0.005 pero conforme avanzan los grupos de edad los niveles aumentan para todas las ciudades. 
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 data4 <- read_csv("Preg4.csv")
@@ -55,11 +56,11 @@ ggplot(data=data4, aes(x=Age,y=incidencia, colour=City))+ geom_point()+ theme_cl
   theme(text = element_text(size = 11),element_line(linewidth =0.5))
 ```
 
-Podemos apreciar de la siguiente gráfica presentada que por cada grupo de edad la incidencia en cada ciudad va en aumento, por ejemplo en el grupo de edad de 40-54 la incidencia de cáncer esta por debajo de 0.005 pero conforme avanzan los grupos de edad los niveles aumentan para todas las ciudades
 
-# ii) Distribución Poisson con liga logarítmica y un segundo modelo.
 
-Como primer modelo consideraremos uno con distribución Poisson y función log, ademas de considerar las demás covariables de Age y City con su interacción 
+### ii) Distribución Poisson con liga logarítmica y un segundo modelo.
+
+Como primer modelo consideraremos uno con distribución Poisson y función log, ademas de considerar las demás covariables de Age y City con su interacción. Aplicamos el código glm(formula = Cases $\sim$ offset(logPop) + Age * City, family = poisson(link = "log"). 
 
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
@@ -71,46 +72,153 @@ Como primer modelo consideraremos uno con distribución Poisson y función log, 
 #### log(mu_y/t)=b0+b1x
 ####    log(mu_y)=log(t)+b0+b1x
 
-data4$log=log(data4$Pop)
+data4$logPop=log(data4$Pop)
 
-ajuste1 <- glm(Cases ~ offset(log)+ Age * City , family=poisson(link="log"), data=data4)
-summary(ajuste1)
+ajuste1 <- glm(Cases ~ offset(logPop)+ Age * City , family=poisson(link="log"), data=data4)
+#summary(ajuste1)
 ```
 
-```{r,echo=FALSE,message=FALSE,warning=FALSE}
+
+
+```{r, echo=FALSE}
 # Regla de dedo para analizar si hay un problema por 
 # considerar el parametro de dispersion igual a 1
-#deviance(ajuste1)/df.residual(ajuste1)
+dev_res1<-deviance(ajuste1)/df.residual(ajuste1)
+```
+
+
+El AIC obtenido con este Modelo 1 es de 121.47 y de la regla del dedo para analizar si hay un problema por considerar el parametro de dispersion igual a 1 obtuvimos un valor de `r dev_res1`, lo cual nos dice que no es un bueno modelo, de todas formas se hizo la verificacion de los supuestos que por cuestión de espacio no se muestra, pero salio muy mal en estos por lo que se decidió no usarse. 
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
 
 #library(DHARMa)  
 #set.seed(1234)
 #fitres <- simulateResiduals(fittedModel = ajuste1)
 #plot(fitres)
 
-#De la regla del dedo obtuvimos un valor de -inf, lo cual nos dice que no es un bueno modelo, de todas formas se hizo la verificacion de los supuestos pero salio muy mal en estos por lo que se decidio no usarse
 ```
 
-De las verificaciones de los supuestos para el primer modelo observamos que tenemos muchos problemas con los mismos del modelo por lo que optaremos por ajustar un segundo modelo, con la diferencia de que solo incluiremos a la covariable Age sin interacción.
+
+De las verificaciones de los supuestos para el primer modelo observamos que tenemos muchos problemas por lo que optaremos por ajustar un segundo modelo,  con la diferencia de que solo incluiremos a la covariable Age sin interacción. Usamos el código glm(formula = Cases $\sim$ offset(logPop) + Age, family = poisson(link = "log"), data = data4). Este Modelo 2 nos da un AIC de 108.45.
 
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
-ajuste2 <- glm(Cases ~ offset(log) + Age , family=poisson(link="log"), data=data4)
-summary(ajuste2)
+ajuste2 <- glm(Cases ~ offset(logPop) + Age , family=poisson(link="log"), data=data4)
+#summary(ajuste2)
 ```
 
-Veamos si este modelo para la regle de dedo:
+
+```{r, echo=FALSE}
+#stargazer(ajuste1, ajuste2)
+```
+
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{}
+\footnotesize
+\begin{tabular}{@{\extracolsep{5pt}}lcc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{2}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-3} 
+\\[-1.8ex] & \multicolumn{2}{c}{Cases} \\ 
+\\[-1.8ex] & (1) & (2)\\ 
+\hline \\[-1.8ex] 
+ Age55-59 & 1.341$^{***}$ & 1.082$^{***}$ \\ 
+  & (0.426) & (0.248) \\ 
+  & & \\ 
+ Age60-64 & 1.461$^{***}$ & 1.502$^{***}$ \\ 
+  & (0.426) & (0.231) \\ 
+  & & \\ 
+ Age65-69 & 1.566$^{***}$ & 1.750$^{***}$ \\ 
+  & (0.437) & (0.229) \\ 
+  & & \\ 
+ Age70-74 & 1.793$^{***}$ & 1.847$^{***}$ \\ 
+  & (0.426) & (0.235) \\ 
+  & & \\ 
+ CityHorsens & 0.228 &  \\ 
+  & (0.410) &  \\ 
+  & & \\ 
+ CityKolding & $-$1.038$^{*}$ &  \\ 
+  & (0.584) &  \\ 
+  & & \\ 
+ CityVejle & $-$0.595 &  \\ 
+  & (0.539) &  \\ 
+  & & \\ 
+ Age55-59:CityHorsens & $-$1.137$^{*}$ &  \\ 
+  & (0.652) &  \\ 
+  & & \\ 
+ Age60-64:CityHorsens & $-$0.180 &  \\ 
+  & (0.570) &  \\ 
+  & & \\ 
+ Age65-69:CityHorsens & $-$0.589 &  \\ 
+  & (0.606) &  \\ 
+  & & \\ 
+ Age70-74:CityHorsens & $-$0.360 &  \\ 
+  & (0.585) &  \\ 
+  & & \\ 
+ Age55-59:CityKolding & 0.448 &  \\ 
+  & (0.746) &  \\ 
+  & & \\ 
+ Age60-64:CityKolding & 0.355 &  \\ 
+  & (0.758) &  \\ 
+  & & \\ 
+ Age65-69:CityKolding & 0.944 &  \\ 
+  & (0.729) &  \\ 
+  & & \\ 
+ Age70-74:CityKolding & 0.788 &  \\ 
+  & (0.737) &  \\ 
+  & & \\ 
+ Age55-59:CityVejle & 0.050 &  \\ 
+  & (0.724) &  \\ 
+  & & \\ 
+ Age60-64:CityVejle & 0.332 &  \\ 
+  & (0.694) &  \\ 
+  & & \\ 
+ Age65-69:CityVejle & 0.849 &  \\ 
+  & (0.680) &  \\ 
+  & & \\ 
+ Age70-74:CityVejle & 0.219 &  \\ 
+  & (0.712) &  \\ 
+  & & \\ 
+ Constant & $-$5.628$^{***}$ & $-$5.862$^{***}$ \\ 
+  & (0.302) & (0.174) \\ 
+  & & \\ 
+\hline \\[-1.8ex] 
+Observations & 20 & 20 \\ 
+Log Likelihood & $-$40.736 & $-$49.226 \\ 
+Akaike Inf. Crit. & 121.473 & 108.451 \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
+
+
+
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 #Regla de dedo para analizar si hay un problema por 
 # considerar el parametro de dispersion igual a 1
-deviance(ajuste2)/df.residual(ajuste2)
+dev_res<-deviance(ajuste2)/df.residual(ajuste2)
+
+```
+
+Vemos que este Modelo 2  tuvimos un valor de  `r dev_res`, muy cercano a 1 con la regla de dedo para analizar si hay un problema por considerar el parametro de dispersion igual a 1, lo cual nos dice que es buen modelo, por lo que procedimos con la verificación de los supuestos del modelo de manera gráfica.
+
+
+
+
+```{r, echo=FALSE}
 library(DHARMa)  
 set.seed(1234)
 fitres_2 <- simulateResiduals(fittedModel = ajuste2)
 plot(fitres_2)
 ```
 
-Para este segundo modelo en el que solo se toma como covariable a la edad tuvimos un valor muy cercano a 1 con la regla del dedo, lo cual nos dice que es buen modelo, por lo que procedimos con la verificación de los supuestos del modelo con los cuales no parece tener ningún problema.
+
 
 Lo que sigue sera hacer una prueba anova en la que compararemos ambos modelo y decidir si se puede usar el segundo modelo.
 
@@ -122,14 +230,65 @@ anova(ajuste1,ajuste2, test = "Chisq")
 Como obtuvimos un p-value mayor que 0.05 no tenemos evidencia suficiente para rechazar la hipótesis nula, por lo que concluimos que no se tiene una mejora significativa tomando mas variables y su interacción.Adicional mente tenemos que el AIC del modelo con Age como única covariable es menor que el que incluye la interacción por lo que tenemos las herramientas suficientes para descartar dicho modelo.
 
 
-# iii)Modelo binomial negativo. Comparación con el anterior.
+### iii) Modelo binomial negativo, comparación e intervalo de confianza simultáneo.
 
+
+Planteando un modelo binomial negativo con el código glm.nb(Cases ~ offset(logPop)+ Age , data = data4, link = "log"), tenemos el resultado del siguiente Cuadro, con un AIC de 110.45. 
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 library(MASS)
-fit_negbin3 <- glm.nb(Cases ~ offset(log)+ Age , data = data4, link = "log")
-summary(fit_negbin3)
+fit_negbin3 <- glm.nb(Cases ~ offset(logPop)+ Age , data = data4, link = "log")
+#summary(fit_negbin3)
 ```
+
+
+```{r, echo=FALSE}
+#stargazer(fit_negbin3)
+```
+
+
+
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\footnotesize
+\begin{tabular}{@{\extracolsep{5pt}}lc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{1}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-2} 
+\\[-1.8ex] & Cases \\ 
+\hline \\[-1.8ex] 
+ Age55-59 & 1.082$^{***}$ \\ 
+  & (0.248) \\ 
+  & \\ 
+ Age60-64 & 1.502$^{***}$ \\ 
+  & (0.231) \\ 
+  & \\ 
+ Age65-69 & 1.750$^{***}$ \\ 
+  & (0.229) \\ 
+  & \\ 
+ Age70-74 & 1.847$^{***}$ \\ 
+  & (0.235) \\ 
+  & \\ 
+ Constant & $-$5.862$^{***}$ \\ 
+  & (0.174) \\ 
+  & \\ 
+\hline \\[-1.8ex] 
+Observations & 20 \\ 
+Log Likelihood & $-$50.226 \\ 
+$\theta$ & 152,366.700  (s.e: 5,232,704.000) \\ 
+Akaike Inf. Crit. & 110.451 \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{1}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
+
+
+
+
+
 
 ```{r,echo=FALSE}
 #Verifiquemos los supuestos de este modelo con DHARMa
@@ -149,16 +308,21 @@ summary(fit_negbin3)
 #Comparemos los AIC y BIC de los ultimos 2 modelos para ver cual es mejor en este #aspecto.
 ```
 
+Como ultimo criterio para escoger modelo final compararemos los resultados tanto del AIC como del BIC para los modelos poisson con covariable edad (Modelo 2) contra el binomial negativo (Modelo 3), donde es claro que el mejor fue el poisson.
+
+
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
+("AIC:(2), AIC:(3)")
 c(AIC(ajuste2), AIC(fit_negbin3))
+
+("BIC:(2), BIC:(3)")
 c(BIC(ajuste2), BIC(fit_negbin3))
 ```
 
-Como ultimo criterio para escoger modelo final compararemos los resultados tanto del AIC como del BIC para los modelos poisson con covariable edad vs el binomial negativo, donde es claro que el mejor fue el poisson.
 
-Finalmente haremos intervalos de confianza simultáneos con el modelo Poisson 2 que para nosotros resulto ser el mejor de los 3.
+Finalmente haremos intervalos de confianza simultáneos con el modelo Poisson con covariable edad, que para nosotros resultó ser el mejor de los 3. 
 
-## Intervalos
+
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 #Para los intervalos de confianza lo que haremos sera definir una malla de valores para la edad.
@@ -168,6 +332,8 @@ Finalmente haremos intervalos de confianza simultáneos con el modelo Poisson 2 
 library(MASS)
 Edad <- seq(from = 40, to =74, by = .5)
 ```
+
+
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 #el calculo de los intervalos los haremos a una confianza del 95%
@@ -192,7 +358,7 @@ abline(h=110, col="blue")
 
 De los resultados obtenidos en la gráfica con los intervalos podemos ver que aproximadamente a partir de los 57-58 años de edad la incidencia de cáncer de pulmón en las ciudades de Dinamarca va en aumento,cosa que ya se podía observar en la gráfica presentada en el primer punto del ejercicio.
 
-Habiendo realizado todo el análisis, podemos decir que la edad si jugo un papel importante en el modelo y nos ayudo a ver de forma mas clara y concisa que en efecto para las ciudades estudiadas por el equipo de investigadores en todas se incrementa la incidencia de cancer pulmonar conforme avanzan los años.
+Habiendo realizado todo el análisis, podemos decir que la edad juega un papel importante en el modelo y nos ayudó a ver de forma más clara y concisa que en efecto para las ciudades estudiadas por el equipo de investigadores en todas se incrementa la incidencia de cancer pulmonar conforme avanzan los años de edad.  
 
 
 
