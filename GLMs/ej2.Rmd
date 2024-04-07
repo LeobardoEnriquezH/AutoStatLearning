@@ -88,6 +88,11 @@ FormList=list(NA)   #guardar la formula usada para el ajuste
 ```
 
 
+
+
+
+
+
 ```{r, echo=FALSE}
 #Generamos los cíclos y combinaciones de las mallas
 index=0
@@ -132,6 +137,9 @@ for(k in 1:nCompLin){
 
 
 
+
+
+
 ```{r, echo=FALSE}
 #El modelo con menor AIC
 MinAIC=which.min(unlist(AICList))
@@ -161,6 +169,8 @@ glm(formula = bpsystol ~ age+sex+bmi, family = inverse.gaussian(link = identity 
 modelo_glm1<-glm(formula = bpsystol ~ age+sex+bmi, family = inverse.gaussian(link = identity), data = datos)
 #summary(modelo_glm1)
 ```
+
+
 
 ```{r, echo=FALSE}
 #stargazer(ModMinAIC, modelo_glm1)
@@ -226,6 +236,8 @@ summary(glht(modelo_glm1, linfct=K, rhs=m), test=Chisqtest())
 
 
 
+
+
 ```{r, echo=FALSE}
 # Se incluye cierta aleatorización para datos binarios
 library(statmod)
@@ -249,7 +261,9 @@ resid_panel(modelo_glm1, plots=c("all"),scale = 1)
 ```
 
 
+
 Además en las siguientes gráficas se comprueba las observaciones de las gráficas anteriores.
+
 
 ```{r, echo=FALSE, width = 6, fig.height = 4}
 set.seed(123)
@@ -289,6 +303,8 @@ curva_ajustada_mujer64 <- function(x) {modelo_glm1$coefficients[1] + modelo_glm1
 
 curva_ajustada_hombre64 <- function(x) {modelo_glm1$coefficients[1] + modelo_glm1$coefficients[4]*x  + modelo_glm1$coefficients[2]*64}
 ```
+
+
 
 
 ```{r, echo=FALSE,message=FALSE,warning=FALSE, width = 6, fig.height = 3}
