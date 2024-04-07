@@ -1,7 +1,7 @@
 ---
-title: ""
-author: ''
-date: ""
+title: "Ejercicio 4"
+author: 'Equipo #'
+date: "2024-03-31"
 output: pdf_document
 ---
 
@@ -32,21 +32,17 @@ La base de datos Preg4.csv contiene información sobre el número de casos de c�
 
 
 
-### i) Gráfica de dispersión de grupos de edad e incidencia
+# i) Gráfica de dispersión de grupos de edad e incidencia
 
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 data4 <- read_csv("Preg4.csv")
 ```
 
-
-
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 #Primero haremos factor las variables de ciudad y edad
 data4$City <- as.factor(data4$City)
 ```
-
-
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 #Tambien crearemos la variable que indicara la tasa de incidencia
@@ -61,94 +57,78 @@ ggplot(data=data4, aes(x=Age,y=incidencia, colour=City))+ geom_point()+ theme_cl
 
 Podemos apreciar de la siguiente gráfica presentada que por cada grupo de edad la incidencia en cada ciudad va en aumento, por ejemplo en el grupo de edad de 40-54 la incidencia de cáncer esta por debajo de 0.005 pero conforme avanzan los grupos de edad los niveles aumentan para todas las ciudades
 
-### ii) Distribución Poisson con liga logarítmica y un segundo modelo.
+# ii) Distribución Poisson con liga logarítmica y un segundo modelo.
 
 Como primer modelo consideraremos uno con distribución Poisson y función log, ademas de considerar las demás covariables de Age y City con su interacción 
 
 
-```{r,echo=FALSE,message=F,warning=FALSE}
-fit_poisson <- glm(Cases ~ incidencia + Age * City, data = data4, family = poisson(link = "log"))
-summary(fit_poisson)
-```
-
-```{r,echo=FALSE}
-#Toda esta parte de verificacion de supuestos del primer modelo se omitira en el pdf pero se dejara aqui en codigo
-
-#Ya que ajustamos el primer modelo comenzaremos a verificar los supuestos del mismo. Para comenzar realizaremos la prueba de dedo para ver si se cumple el supuesto de la media igual a la varianza.
-```
-
-```{r,echo=FALSE}
-#Ya que ajustamos el primer modelo comenzaremos a verificar los supuestos del mismo. Para comenzar realizaremos la prueba de dedo para ver si se cumple el supuesto de la media igual a la varianza.
-```
-
-
-
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
-#deviance(fit_poisson)/df.residual(fit_poisson)
-```
+#Lo que nos interesa es ver si es estudiar si se puede indicar que a mayor edad existe mayor incidencia de cancer de pulmon
 
+# Notar que para dejar en terminos de la variable con conteos,
+# al considerar la liga log se debe incluir log(data4$Pop) [offset]
 
-```{r,echo=FALSE}
-#En este caso tenemos un valor muy alejado de 1 lo cual nos indica que este supuesto no se esta cumpliendo, es decir, tenemos que la media no es igual a la varianza.
+#### log(mu_y/t)=b0+b1x
+####    log(mu_y)=log(t)+b0+b1x
 
-#Veamos como se comportan los demás supuestos.
-```
+data4$log=log(data4$Pop)
 
-
-```{r,echo=FALSE,message=FALSE,warning=FALSE}
-#resid_panel(fit_poisson, plots=c("all"))
+ajuste1 <- glm(Cases ~ offset(log)+ Age * City , family=poisson(link="log"), data=data4)
+summary(ajuste1)
 ```
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
-#set.seed(123)
-#fit1res <- simulateResiduals(fittedModel = fit_poisson)
-#plot(fit1res )
+# Regla de dedo para analizar si hay un problema por 
+# considerar el parametro de dispersion igual a 1
+#deviance(ajuste1)/df.residual(ajuste1)
+
+#library(DHARMa)  
+#set.seed(1234)
+#fitres <- simulateResiduals(fittedModel = ajuste1)
+#plot(fitres)
+
+#De la regla del dedo obtuvimos un valor de -inf, lo cual nos dice que no es un bueno modelo, de todas formas se hizo la verificacion de los supuestos pero salio muy mal en estos por lo que se decidio no usarse
 ```
 
 De las verificaciones de los supuestos para el primer modelo observamos que tenemos muchos problemas con los mismos del modelo por lo que optaremos por ajustar un segundo modelo, con la diferencia de que solo incluiremos a la covariable Age sin interacción.
 
+
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
-fit_poisson2 <- glm(Cases ~ I(incidencia^1.8) + Age , data = data4, family = poisson(link = "log"))
-summary(fit_poisson2)
+ajuste2 <- glm(Cases ~ offset(log) + Age , family=poisson(link="log"), data=data4)
+summary(ajuste2)
 ```
 
 Veamos si este modelo para la regle de dedo:
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
-deviance(fit_poisson2)/df.residual(fit_poisson2)
-```
-Tenemos como resultado un valor cercano a 1 por lo que pasaremos a verificar los supuestos del modelo.
-
-
-```{r,echo=FALSE,message=FALSE,warning=FALSE}
-#se omitiran las graficas en panel por motivos de espacio
-#resid_panel(fit_poisson2, plots=c("all"))
-#set.seed(123)
-fit1res2 <- simulateResiduals(fittedModel = fit_poisson2)
-plot(fit1res2)
-par(mfrow = c(2, 2))
+#Regla de dedo para analizar si hay un problema por 
+# considerar el parametro de dispersion igual a 1
+deviance(ajuste2)/df.residual(ajuste2)
+library(DHARMa)  
+set.seed(1234)
+fitres_2 <- simulateResiduals(fittedModel = ajuste2)
+plot(fitres_2)
 ```
 
-De la gráfica podemos notar que no parece tener problemas con la Q-Q Plot. 
-
-
-Notamos que este nuevo modelo mejora bastante respecto al primero en el que se incluían mas covariables y ya no presenta los mismos problemas que el primer ajuste realizado tomando la interacción de las covariables.
+Para este segundo modelo en el que solo se toma como covariable a la edad tuvimos un valor muy cercano a 1 con la regla del dedo, lo cual nos dice que es buen modelo, por lo que procedimos con la verificación de los supuestos del modelo con los cuales no parece tener ningún problema.
 
 Lo que sigue sera hacer una prueba anova en la que compararemos ambos modelo y decidir si se puede usar el segundo modelo.
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
-anova(fit_poisson,fit_poisson2, test = "Chisq")
+anova(ajuste1,ajuste2, test = "Chisq")
 ```
-De la prueba de bondad de ajuste notamos que no se rechaza H0 por lo que se puede usar el segundo modelo para los datos.
-Ademas comparado los AIC de ambos modelos tenemos por un lado que el primer modelo tuvo como resultado 121.47 contra 102.59 del segundo modelo en el cual se corrigieron problemas de con los supuestos.
 
 
-### iii)Modelo binomial negativo. Comparación con el anterior.
+Como obtuvimos un p-value mayor que 0.05 no tenemos evidencia suficiente para rechazar la hipótesis nula, por lo que concluimos que no se tiene una mejora significativa tomando mas variables y su interacción.Adicional mente tenemos que el AIC del modelo con Age como única covariable es menor que el que incluye la interacción por lo que tenemos las herramientas suficientes para descartar dicho modelo.
+
+
+# iii)Modelo binomial negativo. Comparación con el anterior.
 
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
-fit_negbin <- glm.nb(Cases ~ incidencia + Age , data = data4, link = "log")
-summary(fit_negbin)
+library(MASS)
+fit_negbin3 <- glm.nb(Cases ~ offset(log)+ Age , data = data4, link = "log")
+summary(fit_negbin3)
 ```
 
 ```{r,echo=FALSE}
@@ -159,58 +139,60 @@ summary(fit_negbin)
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 #set.seed(123)
-#fit_negativ <- simulateResiduals(fittedModel = fit_negbin)
-#plot(fit_negativ)
+#fit_neg <- simulateResiduals(fittedModel = fit_negbin3)
+#plot(fit_neg)
 ```
 
 ```{r,echo=FALSE}
-#Podemos decir que este también parece ser buen modelo, al menos es mucho mejor #que el primero, sin embargo no parece ser mejor que el segundo modelo.
+#Podemos decir que este tambien parece ser buen modelo, al menos es mucho mejor #que el primero, sin embargo no parece ser mejor que el segundo modelo.
 
 #Comparemos los AIC y BIC de los ultimos 2 modelos para ver cual es mejor en este #aspecto.
 ```
 
-
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
-c(AIC(fit_poisson2), AIC(fit_negbin))
-c(BIC(fit_poisson2), BIC(fit_negbin))
+c(AIC(ajuste2), AIC(fit_negbin3))
+c(BIC(ajuste2), BIC(fit_negbin3))
 ```
-Como ya habíamos mencionado el segundo modelo Poisson resulto mejor que el modelo ajustado con Binomial negativa.
+
+Como ultimo criterio para escoger modelo final compararemos los resultados tanto del AIC como del BIC para los modelos poisson con covariable edad vs el binomial negativo, donde es claro que el mejor fue el poisson.
+
 Finalmente haremos intervalos de confianza simultáneos con el modelo Poisson 2 que para nosotros resulto ser el mejor de los 3.
 
+## Intervalos
 
-Los intervalos son los siguientes: 
-
-
-```{r,echo=FALSE}
-#Para los intervalos de confianza lo que haremos sera definir una malla de valores para la edad ya que nos interesa saber si a mayor edad existe mayor incidencia de cancer de pulmon
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+#Para los intervalos de confianza lo que haremos sera definir una malla de valores para la edad.
 ```
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 library(MASS)
-edad <- seq(from = 40, to =74, by = .5)
+Edad <- seq(from = 40, to =74, by = .5)
 ```
-
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 #el calculo de los intervalos los haremos a una confianza del 95%
 #E(y;x)= b0 + b1 incidencia^1.8  + b2 Age
 library(multcomp)
-k <- cbind(0,0,0,0,-1,-edad)
+K_1 <- cbind(0,0,0,1,Edad)
 #banda del primer grupo de edad
 
 
-fite <- glht(fit_poisson2, linfct = k)
-fitci2 <- confint(fite, level = 0.95)
+fittI <- glht(ajuste2, linfct = K_1)
+fitci3 <- confint(fittI, level = 0.95)
 
 
-plot(edad, coef(fite), col="black", type="l", main="Incidencia de Cáncer por Edad")+
-lines(edad, fitci2$confint[,"upr"], col="black")+
-lines(edad, fitci2$confint[,"lwr"], col="black")+
-abline(h=25, col="blue")
+plot(Edad, coef(fittI), col="black", type="l", main="Incidencia de Cáncer por Edad")+
+lines(Edad, fitci3$confint[,"upr"], col="red")+
+lines(Edad, fitci3$confint[,"lwr"], col="red")+
+abline(h=110, col="blue")
+
+#Aplicando la funcion inversa para obtener los valores sobre la esperanza de y, omitiremos este resultado, sin embargo es de utilidad para saber en que nivel nos permite obtener estimaciones directas de la media esperada de la variable de respuesta en el espacio original de la variable de respuesta, lo que facilita su interpretación y comparación con otros datos o modelos. Esto es especialmente útil cuando estamos interesados en las predicciones en la escala original de la variable de respuesta, en lugar de en la escala del predictor lineal.
+#exp(fitci3$confint)
 ```
 
 De los resultados obtenidos en la gráfica con los intervalos podemos ver que aproximadamente a partir de los 57-58 años de edad la incidencia de cáncer de pulmón en las ciudades de Dinamarca va en aumento,cosa que ya se podía observar en la gráfica presentada en el primer punto del ejercicio.
 
+Habiendo realizado todo el análisis, podemos decir que la edad si jugo un papel importante en el modelo y nos ayudo a ver de forma mas clara y concisa que en efecto para las ciudades estudiadas por el equipo de investigadores en todas se incrementa la incidencia de cancer pulmonar conforme avanzan los años.
 
 
 
