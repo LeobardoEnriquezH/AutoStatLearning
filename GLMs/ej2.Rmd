@@ -322,7 +322,21 @@ ggplot(datos, aes(bmi, bpsystol)) +
 
 ### iii) Comparativo modelo de regresión lineal múltiple contra modelo lineal generalizado. 
 
-En esta sección compararemos el  modelo de regresión lineal múltiple del ejercicio anterior (ejercicio 1) contra el modelo lineal generalizado con base en sus AIC (ejercicio 2). Además, compararemos las conclusiones e interpretaciones de ambos modelos, para indicar cuál nos parece más adecuado y fácil de interpretar. El AIC del primer modelo de regresión lineal es de $-376.2099$, el cual no es directamente comparable al AIC del modelo lineal general de $2,484.136$, pero haciendo el cambio de escala podemos notar que el modelo de menor AIC es el del modelo OLS. Sin embargo, se observa que el modelo más sencillo de interpretar sus coeficientes de manera directa es el mlg, sin tener que hacer transformaciones adicionales,  por lo que nos parece adecuado elegir este como el mejor modelo. 
+
+
+
+```{r, echo=FALSE}
+#AIC Usando la función performance_aicc de biblioteca performance
+modelo2 <- lm(log(bpsystol) ~  bmi + factor(sex) + age, datos)
+#summary(modelo2)
+AICY<-performance_aic(modelo2)
+```
+
+
+
+
+
+En esta sección compararemos el  modelo de regresión lineal múltiple del ejercicio anterior (ejercicio 1) contra el modelo lineal generalizado con base en sus AIC (ejercicio 2). Además, compararemos las conclusiones e interpretaciones de ambos modelos, para indicar cuál nos parece más adecuado y fácil de interpretar. El AIC del primer modelo de regresión lineal es de $-376.2099$, el cual no es directamente comparable con el AIC del modelo lineal general mlg de $2,484.136$, pero haciendo una transformación (ya que la variable dependiente se tranformó en logaritmo) podemos notar que el modelo de mayor AIC es el modelo OLS con un AIC de `r AICY`. Además, se observa que el modelo más sencillo de interpretar sus coeficientes de manera directa es el mlg, sin tener que hacer transformaciones adicionales a los coeficientes,  por lo que nos parece adecuado elegir este como el mejor modelo. 
 
 Tomando en cuenta el modelo elegido y habiendo mostrado el cumplimiento de los supuestos del modelo, además de una prueba de hipótesis global satisfactoria, podemos concluir que la relación entre  bmi es directa (positiva) con bpsystol, el incremento en una unidad en mbi, incrementa el bpsystol en 1.76 unidades. Por otra parte, el ser mujer, con respecto a ser hombre, tiene una relación inversa (negativa) con bpsystol, es decir, ser mujer disminuye en 6.886 unidades la bpsystol. Con respecto a la edad, un incremento en una unidad de edad, incrementa bpsystol en 0.483 unidades.  
 
@@ -367,7 +381,7 @@ Observations & 295 & 295 \\
 R$^{2}$ & 0.321 &  \\ 
 Adjusted R$^{2}$ & 0.314 &  \\ 
 Log Likelihood &  & $-$1,238.068 \\ 
-Akaike Inf. Crit. &  & 2,484.136 \\ 
+Akaike Inf. Crit. &  -376.2099 (\textbf{2485.747}) & \textbf{2,484.136} \\ 
 Residual Std. Error & 0.127 (df = 291) &  \\ 
 F Statistic & 45.922$^{***}$ (df = 3; 291) &  \\ 
 \hline 

@@ -40,128 +40,1139 @@ pacman::p_load(tidyverse,
                stargazer,knitr,viridis,dplyr,readr,scales,quantmod,texreg,tinytex, 
                tidyr, imager,lubridate,tseries, astsa, growthrates, tis, dynlm, 
                readxl, foreign, hrbthemes, gtsummary, corrplot, lm.beta, ggfortify,
-               AER, lmtest, sandwich,GGally)
+               AER, lmtest, sandwich,GGally, ggplot2, multcomp, purrr, VGAM, lessR,
+               flextable, performance, see,qqplotr, ggrepel, patchwork,boot,rempsyc,
+               report, ggResidpanel,DHARMa, SuppDists)
 ```
 
 
+
+\newpage
+
 ## 1. Regresión lineal múltiple.
-
-La base de datos Preg1B.csv contiene información sobre 295 pacientes seleccionados de forma aleatoria. Se desea analizar si existe una asociación entre la presión arterial sistólica (bpsystol) y el índice de masa corporal (bmi), en particular, si es posible observar que tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica. Para realizar este análisis se indica que se considere el sexo (sex: 1-hombre, 2-mujer) y la edad (age) de los pacientes, pues la presión arterial sistólica podría variar de acuerdo con estos factores. 
-
-i. Ajuste el modelo de regresión lineal múltiple para E(bpsystol; bmi, sex, age), donde las variables bmi y age entran sin modificación alguna y sin interacciones entre ellas ni con la variable sex. Indique si este modelo parece adecuado para realizar el análisis solicitado. En caso afirmativo, pase a inciso iii).
-
-ii. En caso de que considere que el modelo en i) no es adecuado, presente un modelo que le parezca adecuado, donde de ser necesario se transformen las variables bpsystol, bmi o age. Por simplicidad no considere en el modelo interacciones entre las variables. Tanto en i) como en este inciso, revisar la linealidad de forma global y también analizando por cada covariable continua.
-
-
-iii. ¿Se puede indicar que para una persona de cierta edad y sexo, tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica? Argumente su respuesta, indicando con claridad la prueba o pruebas de hipótesis usadas y las hipótesis que se están contrastando.
-
-iv. Para complementar la interpretación de los resultados del inciso iii), presente una gráfica resumen con la estimación puntual asociada a la relación entre bpsystol y bmi. Para esto considere sólo tres posibles edades: 30, 50 y 64, así como la diferenciación entre mujeres y hombres. Comente e interprete lo que observa en la gráfica, indicando con claridad a qué parámetro corresponde la curva/recta.
 
 
 ### i) Modelo de RLM reducido para E(bpsystol; bmi, sex, age) con datos originales. 
 
+Para analizar si existe una asociación entre la presión arterial sistólica (bpsystol) como variable dependiente y el índice de masa corporal (bmi), ajustaremos un modelo de regresión lineal múltiple, considerando el sexo (sex: 1-hombre y 2-mujer con nivel de referencia hombre) y la edad (age) de los pacientes. Para ello usaremos la base de datos ``reg1B.csv`` con 295 pacientes, 142 hombres y 153 mujeres, de entre 20 y 74 años. En el cuadro de MODELOS se muestran los resultados del Modelo 1 planteado, sin pretratamiento de los datos. 
+
+La prueba global $F$ muestra un p-value menor a 0.05, por lo que rechazamos la hipótesis nula de que los parámetros estimados son cero, es decir, podemos decir que al menos un coeficiente estimado es distinto de cero, por lo que el modelo es estadísticamente significativo al nivel de confianza del 95%. Las pruebas individuales también rechazan la hipótesis nula con la preba $t-student$, es decir, todos los coeficientes son significativos al 5%, pues se rechaza la hipótesis nula de que en lo individual sean iguales a cero. 
+
+
+
+```{r, echo=FALSE}
+datos<-read_csv("Preg1B.csv", show_col_types = FALSE)
+datos$sex<-factor(datos$sex) #declaramos la variable como factor
+#Realizamos un relevel para poner como referencia "1" hombre
+datos$sex<-relevel(datos$sex,"1")
+```
+
+
+```{r, echo=FALSE}
+modelo1<-lm(data=datos, bpsystol ~ bmi + sex + age)
+#summary(modelo1)
+```
+
+
+
+
+
+
+En el siguiente Cuadro se pueden observar las pruebas de Shapiro-Wilk, Breusch-Pagan y Durbin-Watson para el Modelo 1, que plantean la hipótesis nulas de normalidad, homoscedasticidad y no autocorrelación, respectivamente. Se concluye que el Modelo 1 presenta no autocorrelación y homoscedasticidad, sin embargo no presenta normalidad de los errores. Por lo que tendremos que hacer algunos ajustes al modelo, con algunos tratamientos a las variables. 
+
+
+```{r, echo=FALSE}
+table_tests<-nice_assumptions(modelo1)
+table_tests_fin<-subset(table_tests, select = -c(Model,Diagnostic) )
+
+kable(t(table_tests_fin)) %>%
+kable_styling(bootstrap_options = "striped", full_width = F)
+```
+
+
+
+
 ### ii) Modelo adecuado con transformación de datos.
 
+
+
+```{r, echo=FALSE}
+#AIC Usando la función performance_aicc de biblioteca performance
+modelo2 <- lm(log(bpsystol) ~  bmi + factor(sex) + age, datos)
+#summary(modelo2)
+AICY<-performance_aic(modelo2)
+```
+
+
+Como tenemos un problema con la normalidad, procederemos a hacer primero una transformación a la variable dependiente, probaremos con una transformación más usual que es la logarítmica, la cual se puede interpretar más fácilmente.  Por simplicidad no consideraremos en el Modelo 2 interacciones entre las variables y se propone una transformación Box Cox logarítimica de la variable dependiente. Para este Modelo 2, se observa en el Cuadro de MODELOS que la prueba global $F$ rechaza la hipótesis nula, por lo que al menos un coeficiente estimado es distinto de cero, y las pruebas $t-student$ individuales de los coeficientes estimados también rechazan las hipótesis nulas analizados individualmente. Notemos que *** implica que se rechaza la hipótesis nula incluso con un nivel de confianza del 99%, el p-value es menor a 0.01. Además al comparar los AIC, tenemos para el Modelo 1 es de $2507.213$ y para el Modelo 2, considerando que la transformación  a la variable dependiente fue logarítmica, es de `r AICY` lo cual es menor, esto favorece la alección del Modelo 2.     
+
+
+
+```{r, echo=FALSE}
+#Modelo 2 con logaritmos
+modelo2=lm(data=datos, I(log(bpsystol)) ~ bmi + sex + age)
+#summary(modelo2)
+```
+
+
+
+
+```{r, echo=FALSE}
+#stargazer(modelo1, modelo2)
+```
+
+
+\begin{table}[!htbp] \centering 
+  \caption{MODELOS} 
+  \label{} 
+\footnotesize
+\begin{tabular}{@{\extracolsep{5pt}}lcc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{2}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-3} 
+\\[-1.8ex] & bpsystol & I(log(bpsystol)) \\ 
+\\[-1.8ex] & (1) & (2)\\ 
+\hline \\[-1.8ex] 
+ bmi & 1.208$^{***}$ & 0.009$^{***}$ \\ 
+  & (0.202) & (0.002) \\ 
+  & & \\ 
+ sex2 & $-$5.664$^{***}$ & $-$0.049$^{***}$ \\ 
+  & (1.964) & (0.015) \\ 
+  & & \\ 
+ age & 0.484$^{***}$ & 0.004$^{***}$ \\ 
+  & (0.059) & (0.0004) \\ 
+  & & \\ 
+ Constant & 78.496$^{***}$ & 4.461$^{***}$ \\ 
+  & (5.510) & (0.042) \\ 
+  & & \\ 
+\hline \\[-1.8ex] 
+Observations & 295 & 295 \\ 
+R$^{2}$ & 0.310 & 0.321 \\ 
+Adjusted R$^{2}$ & 0.302 & 0.314 \\ 
+Residual Std. Error (df = 291) & 16.784 & 0.127 \\ 
+F Statistic (df = 3; 291) & 43.497$^{***}$ & 45.922$^{***}$ \\ 
+AIC:  & \textbf{2507.213} & $-376.2099$( \textbf{2485.747}) \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
+
+
+
+
+
+Para poder tener una interpretación válida de los coeficientes, veremos que el Modelo 2 cumple con los supuestos del modelo de regresión lineal. Primero se mostrarán algunas gráficas. La Gráfica **Residuals vs Fitted Values**, se utiliza para comprobar los supuestos de relación lineal, una línea horizontal, sin patrones distintos, es indicación de una relación lineal, lo que es bueno en nuestro caso. La Gráfica **Sample Q Deviation vs Standard Normal Distribution Q**, se utiliza para examinar si los residuos se distribuyen normalmente, es bueno que los puntos residuales sigan la línea recta, en nuestro caso parece que todo se ajusta bien, pues tenemos muchos valores que siguen la linea. La Gráfica **Scale-Location: Sqrt(|Std. Residuals|) vs Fitted values**, se utiliza para comprobar la homogeneidad de la varianza de los residuos (homoscedasticidad), la línea horizontal con puntos igualmente distribuidos es una buena indicación de homocedasticidad, este es el caso en nuestro modelo, donde no tenemos un problema de heterocedasticidad. La Gráfica **Std. Residuals vs Leverage**, se utiliza para identificar casos de valores influyentes, es decir, valores extremos que podrían influir en los resultados de la regresión cuando se incluyen o excluyen del análisis, al parecer ningún valor sale de la distancia de Cook.  
+
+
+
+
+
+
+```{r, echo=FALSE, warning=FALSE,  message=FALSE, fig.width = 6, fig.height = 2.8}
+par(mfrow = c(2, 2))
+#####check_model() function of performance package: Graphs####
+
+# return a list of single plots
+diagnostic_plots <- plot(check_model(modelo2, panel = FALSE))
+# linearity
+diagnostic_plots[[2]]
+# normally distributed residuals
+diagnostic_plots[[6]]
+# homoscedasticiy - homogeneity of variance
+diagnostic_plots[[3]]
+# influential observations - outliers
+diagnostic_plots[[4]]
+
+
+```
+
+
+
+
+
+
+```{r, echo=FALSE}
+###check_model function of performance package: p-values ###
+
+#check_collinearity(modelo1) # VIF
+#check_autocorrelation(modelo1) #  Autocorrelated residuals p value
+#check_heteroscedasticity(modelo1) # non-constant error variance (heteroscedasticity): p value
+#check_outliers(modelo1) # Outliers method and threshold: cook
+# check_normality(modelo1) # Normality of residuals p value
+```
+
+
+
+
+
+En el siguiente Cuadro, se muestra las pruebas de Shapiro-Wilk, Breusch-Pagan y Durbin-Watson para el Modelo 2, que plantean la hipótesis nulas de normalidad, homoscedasticidad y no autocorrelación, respectivamente. En todos los casos no hay evidencia suficiente para rechazar las hipótesis nulas. 
+
+
+```{r, echo=FALSE}
+# nice_assumptions() function of  rempsyc package: table
+table_tests2<-nice_assumptions(modelo2)
+table_tests_fin2<-subset(table_tests2, select = -c(Model,Diagnostic) )
+
+kable(t(table_tests_fin2)) %>%
+kable_styling(bootstrap_options = "striped", full_width = F)
+```
+
+
+
+
+```{r, echo=FALSE}
+#Las AIC no son comparables directamente por la transformación hecha
+#AICmodelo1<-AIC(modelo1)
+#AICmodelo2<-AIC(modelo2)
+
+```
+
+
+
+
+
 ### iii) Asociación entre masa corporal y presión arterial sistólica.
+
+
+Se puede concluir que para una persona de cierta edad y sexo, tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica. Tomando en cuanta en el Cuadro anterior que se rechaza la hipótesis nula $H_0:\beta_1=0$ contra la anternativa de que $H_a: \beta_1 \neq0$, a continuación se plantea la prueba de hipótesis con dirección, en donde la hipótesis nula es $H_0: \beta_1<0$ y la alternativa $H_a: \beta_1>0$. 
+
+
+```{r, echo=FALSE, message=FALSE}
+#La primera prueba que se debe realizar es 
+#prueba asociada a la tabla ANOVA de regresión lineal múltiple
+
+library(multcomp)
+K=matrix(c(0,1,0,0), ncol=4, nrow=1)
+m=0
+
+prueba_dir<-glht(modelo2, linfct=K, rhs=m, alternative ="greater")
+#summary(prueba_dir)
+
+# Se rechaza H0, lo que implica que se puede proceder
+# al análisis del modelo
+```
+
+
+El resultado de la prueba con dirección  ``Simultaneous Tests for General Linear Hypotheses`` con el ajuste $lm(formula = I(log(bpsystol)) \sim bmi + sex + age, data = datos)$ muestra un p-value de $1.2e-09$, lo cual rechaza la hipótesis nula planteada. Por lo tanto, para una persona de cierta edad y sexo, tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica.   
+
 
 ### iv) Gráfica resumen con la estimación puntual de la relación bpsystol y bmi. 
 
 
+A continuación presentaremos una gráfica resumen con la estimación puntual asociada a la relación entre bpsystol y bmi. Para esto consideremos sólo tres posibles edades: 30, 50 y 64, así como la diferenciación entre mujeres y hombres. El comportamiento en general es que los hombres tienden a tener una mayor presión arterial sistólica, comparado con las mujeres. En todos los casos al aumentar la masa corporal, la presión arterial sistólica incrementa tanto para hombres como para mujeres. Además podemos observar que a mayor edad, es mayor la presión arterial sistólica tanto para hombres como para mujeres. 
+
+
+```{r, echo=FALSE}
+curva_ajustada_mujer30 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x + modelo2$coefficients[3] + modelo2$coefficients[4]*30)}
+curva_ajustada_hombre30 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x  + modelo2$coefficients[4]*30)}
+
+curva_ajustada_mujer50 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x + modelo2$coefficients[3] + modelo2$coefficients[4]*50)}
+curva_ajustada_hombre50 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x  + modelo2$coefficients[4]*50)}
+
+curva_ajustada_mujer64 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x + modelo2$coefficients[3] + modelo2$coefficients[4]*64)}
+curva_ajustada_hombre64 <- function(x) {exp(modelo2$coefficients[1] + modelo2$coefficients[2]*x  + modelo2$coefficients[4]*64)}
+
+```
+
+
+
+```{r, echo=FALSE, fig.width = 6, fig.height = 3}
+ggplot(datos, aes(bmi, bpsystol)) +
+  geom_point() +
+  geom_function(fun = curva_ajustada_mujer30, aes(linetype = "mujer de 30") ,col="skyblue", lwd = 1) +
+  geom_function(fun = curva_ajustada_hombre30, aes(linetype = "hombre de 30") ,col="green") +
+  geom_function(fun = curva_ajustada_mujer50, aes(linetype = "mujer de 50") ,col="darkblue", lwd = 0.8) +
+  geom_function(fun = curva_ajustada_hombre50, aes(linetype = "hombre de 50") ,col="darkgreen") +
+  geom_function(fun = curva_ajustada_mujer64, aes(linetype = "mujer de 64") ,col="red") +
+  geom_function(fun = curva_ajustada_hombre64, aes(linetype = "hombre de 64") ,col="magenta") + theme_bw()
+```
+
+
+
+
+
+
+\newpage
+
+
 ## 2. Modelos lineales generalizados para datos continuos
 
-Considere los mismos datos que en la pregunta 1, la base de datos Preg1B.csv con información sobre 295 pacientes seleccionados de forma aleatoria. Se desea analizar si existe una asociación entre la presión arterial sistólica (bpsystol) y el índice de masa corporal (bmi), considerando el sexo (sex: 1-hombre, 2-mujer) y la edad (age) de los pacientes.
-
-
-
-i. Explorando los diferentes modelos lineales generalizados comúnmente usados cuando la variable dependiente es continua (normal, gamma, inversa gaussiana), presente un modelo que le parezca adecuado para modelar E(bpsystol; bmi, sex, age). Considere por simplicidad que no hay interacción entre las covariables del modelo. Deberá indicar con claridad cuál es la expresión matemática que se usa para modelar E(bpsystol; bmi, sex, age), así como describir el procedimiento y criterio usado para seleccionar el modelo.
-
-
-ii. Repita los incisos iii) y iv) de la pregunta 1 con el modelo en i).
-
-
-
-iii. Comparando el modelo en i) con el usado en la pregunta 1, compare las conclusiones e interpretaciones que se pueden obtener e indique qué modelo prefiere usar. Argumente con claridad su respuesta, por ejemplo, debe incluir los valores de AIC o BIC, así como ventajas y desventajas en la interpretación.
-
+Consideraremos la base de datos ``Preg1B.csv`` con información sobre 295 pacientes seleccionados de forma aleatoria. Se desea analizar si existe una asociación entre la presión arterial sistólica (bpsystol) y el índice de masa corporal (bmi), considerando el sexo (sex: 1-hombre, 2-mujer, con hombre como referencia) y la edad (age) de los pacientes. 
 
 ### i) Explorando modelos con variable dependiente contínua. 
 
+Para presentar un modelo que parezca adecuado para modelar E(bpsystol; bmi, sex, age), exploramos una malla de los diferentes modelos lineales generalizados comúnmente usados: para el componente aleatorio cuando la variable dependiente es continua exploramos las distribuciones normal, gamma, e inversa gaussiana;  empleamos distintas funciones ligas tales como la inversa, identidad, logarítmica, y 1/mu^2(solo para IG); y consideramos el componente lineal tanto de potencias (-3, -2.5, ..., 2.5, 3) como de polinomios (grado 1 al 5). Consideramos por simplicidad que no hay interacción entre las covariables del modelo.  En el siguiente Cuadro se muestraa el mejor modelo, con el menor AIC de 2484.009 (que coincide con el mejor modelo por su BIC de 2502.443), con la siguiente estructura: 
+
+glm(formula = bpsystol ~ age+sex+I(bmi^(1.5)), family = inverse.gaussian(link = identity ), data = datos). 
+
+
+```{r, echo=FALSE}
+datos<-read_csv("Preg1B.csv", show_col_types = FALSE)
+datos$sex<-factor(datos$sex) #declaramos la variable como factor
+#Realizamos un relevel para poner como referencia "1" hombre
+datos$sex<-relevel(datos$sex,"1")
+```
+
+
+
+```{r, echo=FALSE}
+#Seleccionar un modelo entre un conjunto de posibles glm, mediante mallas
+
+#Comp lineal: a)transf BoxTidwell(potencias) a x y b) polinomio sobre x
+#Mallas para el valor de potencia y grado de polinomio:
+malla=seq(from = 1, to = 5, by = 1)
+Poli <- cbind("poly", malla)
+malla=seq(from = -3, to = 3, by = .5)
+Pot <- cbind("pot", malla)
+CompLin=rbind(Poli, Pot)
+
+
+#Componente aleatorio: Y es continua y positiva, tenemos tres opciones: 
+#Malla con distribucion Normal, Gausiana e Inversa Gausiana
+Distribuciones=c("gaussian", "Gamma", "inverse.gaussian")
+
+#Funcion liga:inverse, identity, log, y 1/mu^2(solo para IG)
+FunLigas=c("identity", "log", "inverse", "1/mu^2")
+
+#Declaramos longitud o dimensión de los vectores
+nFunLigas=length(FunLigas)
+nDist=length(Distribuciones)
+nCompLin=dim(CompLin)[1]
+
+#Creación de variables para guardar resultados
+ModelList=list(NA)  #guardar resultados del ajuste, objeto glm
+AICList=list(NA)    #guardar el AIC del modelo
+BICList=list(NA)    #guardar el BIC del modelo
+FormList=list(NA)   #guardar la formula usada para el ajuste
+
+#Modelos 18*2*3+18*1*4(tres funciones ligas para 2 distrib y 4 para una, IG)
+```
+
+
+
+
+
+
+
+```{r, echo=FALSE}
+#Generamos los cíclos y combinaciones de las mallas
+index=0
+for(k in 1:nCompLin){
+  #definimos componente lineal y formula
+  if(CompLin[k,1]=="poly"){
+    formstring=paste0("bpsystol ~ age+sex+poly(bmi,",  CompLin[k,2], ", raw=TRUE)")
+  }else{
+    if(CompLin[k,2]==0){
+      formstring=paste0("bpsystol ~ age+sex+I(log(bmi))")}else
+      {
+        formstring=paste0("bpsystol ~ age+sex+I(bmi^(",  CompLin[k,2], "))")}
+  }
+  form <- as.formula(formstring)
+  for(j in 1:nDist){
+    for(l in 1:nFunLigas){
+      #definicion del argumento family
+      if(FunLigas[l]=="1/mu^2"){
+        if(Distribuciones[j]=="inverse.gaussian"){
+          index=index+1
+          Dist=get(Distribuciones[j])  #obtener la funcion a usar
+          Mod.A.Prueba=glm(form, data=datos, family = Dist(link=FunLigas[l]))
+          ModelList[[index]]=Mod.A.Prueba
+          AICList[[index]]=AIC(Mod.A.Prueba)
+          BICList[[index]]=BIC(Mod.A.Prueba)
+          FormList[[index]]=formstring
+        }
+      }else{
+        index=index+1
+        Dist=get(Distribuciones[j])
+        Mod.A.Prueba=glm(form, data=datos, family = Dist(link=FunLigas[l]))
+        ModelList[[index]]=Mod.A.Prueba
+        AICList[[index]]=AIC(Mod.A.Prueba)
+        BICList[[index]]=BIC(Mod.A.Prueba)
+        FormList[[index]]=formstring
+      }
+    }
+  }
+}
+
+```
+
+
+
+
+
+
+```{r, echo=FALSE}
+#El modelo con menor AIC
+MinAIC=which.min(unlist(AICList))
+ModMinAIC=ModelList[[MinAIC]]
+#summary(ModMinAIC)
+```
+
+
+
+```{r, echo=FALSE, include=FALSE}
+#Mostrar los AIC, BIC, modelo y liga
+ModMinAIC$family
+AICList[[MinAIC]]
+BICList[[MinAIC]]
+FormList[[MinAIC]]
+```
+
+
+
+Sin embargo, se elige el modelo más simple o parsimonioso sin el exponente de $1.5$ para la variable bmi, pues al considerar bmi sin modificación se obtiene un AIC  de 2484.1, el cual no parece ser muy diferente a 2484.009.  En el siguiente Cuadro se muestra el modelo final elegido. 
+
+glm(formula = bpsystol ~ age+sex+bmi, family = inverse.gaussian(link = identity ), data = datos).
+
+
+
+```{r, echo=FALSE}
+modelo_glm1<-glm(formula = bpsystol ~ age+sex+bmi, family = inverse.gaussian(link = identity), data = datos)
+#summary(modelo_glm1)
+```
+
+
+
+```{r, echo=FALSE}
+#stargazer(ModMinAIC, modelo_glm1)
+```
+
+
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\footnotesize
+\begin{tabular}{@{\extracolsep{5pt}}lcc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{2}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-3} 
+\\[-1.8ex] & \multicolumn{2}{c}{bpsystol} \\ 
+\\[-1.8ex] & (1) & (2)\\ 
+\hline \\[-1.8ex] 
+ age & 0.48671$^{***}$ & 0.48269$^{***}$ \\ 
+  & s.e. (0.057) & s.e. (0.057) \\
+  & p-value: 1.06e-15 & p-value:  1.95e-15  \\ 
+  & & \\ 
+ sex2 & $-$7.05833$^{***}$ & $-$6.88649$^{***}$ \\ 
+  & s.e. (1.908) & s.e. (1.906) \\
+  & p-value: 0.000258 & p-value:  0.000356  \\ 
+  & & \\ 
+ I(bmi$\hat{\mkern6mu}$(1.5)) & 0.15131$^{***}$ &  \\ 
+  & s.e. (0.026) &  \\
+  & p-value: 1.95e-08 &   \\ 
+  & & \\ 
+ bmi &  & 1.17620$^{***}$ \\ 
+  &  & s.e. (0.203) \\ 
+  &  & p-value:  1.68e-08  \\ 
+  & & \\ 
+ Constant & 90.16891$^{***}$ & 80.02163$^{***}$ \\ 
+  & s.e. (3.902) & s.e. (5.254) \\ 
+  & p-value: < 2e-16 & p-value:  < 2e-16  \\ 
+  & & \\ 
+\hline \\[-1.8ex] 
+Observations & 295 & 295 \\ 
+Log Likelihood & $-$1,238.004 & $-$1,238.068 \\ 
+Akaike Inf. Crit. & 2,484.009 & 2,484.136 \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
+
+
+
+
+
+La prueba de hipótesis global con la chi-cuadrada del modelo lineal general **inversa gaussiana con liga identidad** muestra un valor Chisq de 142.2139	y un p-value muy pequeño (Pr(>Chisq): 1.259176e-30), mucho menor a 0.05, es decir se rechaza la hipótesis nula, por lo que podemos proceder con el análisis de los supuestos de este modelo reducido más sencillo.   
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE, include=FALSE}
+K=matrix(c(0,1,0,0,
+           0,0,1,0,
+           0,0,0,1), ncol=4, nrow=3, byrow=TRUE)
+m=c(0,0,0)
+summary(glht(modelo_glm1, linfct=K, rhs=m), test=Chisqtest())
+```
+
+
+
+
+
+```{r, echo=FALSE}
+# Se incluye cierta aleatorización para datos binarios
+library(statmod)
+fitlogitqr <- qresid(modelo_glm1)
+#qqnorm( fitlogitqr, las=1 ); qqline( fitlogitqr) 
+lilKS<-nortest::lillie.test(fitlogitqr)
+Shapiro<-shapiro.test(fitlogitqr)
+```
+
+
+
+En la prueba de normalidad ``Lilliefors (Kolmogorov-Smirnov) normality test`` tenemos que el p-value es de `r lilKS[2]`, por lo que no se rechaza la hipótesis nula de normalidad. Por otra parte, pa la prueba de normalidad de ``Shapiro-Wilk normality test`` el p-value es de `r Shapiro[2]`, lo que también no rechaza la hipótesis nula de normalidad. 
+
+
+En las siguientes gráficas podemos observar en **Residual Plot** que se conserva la linealidad y varianza constante. En **Q-Q Plot** y **Histogram ** se observa un buen comportamiento de la normalidad de los errores. En **Index Plot** no hay patrones relacionados con la forma en que se ordenaron los datos, lo que puede proporcionar información sobre tendencias adicionales en los datos que no se han tenido en cuenta en el modelo, no hay una tendencia obvia en el gráfico.  En **Location-Scale Plot** se observa que hay homoscedasticidad. En el **Boxplot** se puden observar algunos aoutliers, sin embargo  en **COOK'S D Plot** y en **Residuals-Leverage Plot** parece no haber outliers influyentes.   
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE, width = 6, fig.height = 6.5}
+resid_panel(modelo_glm1, plots=c("all"),scale = 1)
+```
+
+
+
+Además en las siguientes gráficas se comprueba las observaciones de las gráficas anteriores.
+
+
+```{r, echo=FALSE, width = 6, fig.height = 4}
+set.seed(123)
+fit2res <- simulateResiduals(fittedModel = modelo_glm1)
+plot(fit2res)
+```
+
+
+
 ### ii) Asociación entre masa corporal y presión arterial sistólica, y estimación puntual. 
+
+En esta sección describiremos  la asociación entre masa corporal y presión arterial sistólica y la prueba de hipótesis de esta relación.  Dado que lo que buscamos responder es si tener un indice de masa corporal alto se relaciona con tener una presion sistolica alta agregaremos una prueba de hipótesis con dirección, donde la hipótesis nula es $H_0: \beta_4<0$ contra la alternativa $H_0: \beta_4>0$. El p-value asociado a la prueba es de Pr(>z) = 3.22e-09, por lo tanto, rechazamos la hipótesis nula y por lo tanto hay relación asociación entre la masa corporal alta y la presión arterial sistólica alta para una persona de cierta edad y sexo.  
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+K=matrix(c(0,0,0,1), ncol=4, nrow=1, byrow=TRUE)
+m=0
+prueba<-glht(modelo_glm1, linfct=K, rhs=m, alternative="greater")
+#summary(prueba)
+```
+
+
+
+Por otra presentaremos una gráfica resumen con la estimación puntual de la relación bpsystol y bmi, considerando  edades de 30, 50 y 64, así como la diferenciación entre mujeres y hombres. 
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+curva_ajustada_mujer30 <- function(x) {modelo_glm1$coefficients[1] + modelo_glm1$coefficients[4]*x + modelo_glm1$coefficients[3] + modelo_glm1$coefficients[2]*30}
+
+curva_ajustada_hombre30 <- function(x) {modelo_glm1$coefficients[1] + modelo_glm1$coefficients[4]*x  + modelo_glm1$coefficients[2]*30}
+
+curva_ajustada_mujer50 <- function(x) {modelo_glm1$coefficients[1] + modelo_glm1$coefficients[4]*x + modelo_glm1$coefficients[3] + modelo_glm1$coefficients[2]*50}
+
+curva_ajustada_hombre50 <- function(x) {modelo_glm1$coefficients[1] + modelo_glm1$coefficients[4]*x  + modelo_glm1$coefficients[2]*50}
+
+curva_ajustada_mujer64 <- function(x) {modelo_glm1$coefficients[1] + modelo_glm1$coefficients[4]*x + modelo_glm1$coefficients[3] + modelo_glm1$coefficients[2]*64}
+
+curva_ajustada_hombre64 <- function(x) {modelo_glm1$coefficients[1] + modelo_glm1$coefficients[4]*x  + modelo_glm1$coefficients[2]*64}
+```
+
+
+
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE, width = 6, fig.height = 3}
+ggplot(datos, aes(bmi, bpsystol)) +
+  geom_point() +
+  geom_function(fun = curva_ajustada_mujer30, aes(linetype = "mujer de 30") ,col="skyblue", lwd = 1) +
+  geom_function(fun = curva_ajustada_hombre30, aes(linetype = "hombre de 30") ,col="green") +
+  geom_function(fun = curva_ajustada_mujer50, aes(linetype = "mujer de 50") ,col="darkblue", lwd = 0.8) +
+  geom_function(fun = curva_ajustada_hombre50, aes(linetype = "hombre de 50") ,col="darkgreen") +
+  geom_function(fun = curva_ajustada_mujer64, aes(linetype = "mujer de 64") ,col="red") +
+  geom_function(fun = curva_ajustada_hombre64, aes(linetype = "hombre de 64") ,col="magenta") + theme_bw()
+```
+
+
 
 ### iii) Comparativo modelo de regresión lineal múltiple contra modelo lineal generalizado. 
 
 
 
 
+```{r, echo=FALSE}
+#AIC Usando la función performance_aicc de biblioteca performance
+modelo2 <- lm(log(bpsystol) ~  bmi + factor(sex) + age, datos)
+#summary(modelo2)
+AICY<-performance_aic(modelo2)
+```
+
+
+
+
+
+En esta sección compararemos el  modelo de regresión lineal múltiple del ejercicio anterior (ejercicio 1) contra el modelo lineal generalizado con base en sus AIC (ejercicio 2). Además, compararemos las conclusiones e interpretaciones de ambos modelos, para indicar cuál nos parece más adecuado y fácil de interpretar. El AIC del primer modelo de regresión lineal es de $-376.2099$, el cual no es directamente comparable con el AIC del modelo lineal general mlg de $2,484.136$, pero haciendo una transformación (ya que la variable dependiente se tranformó en logaritmo) podemos notar que el modelo de mayor AIC es el modelo OLS con un AIC de `r AICY`. Además, se observa que el modelo más sencillo de interpretar sus coeficientes de manera directa es el mlg, sin tener que hacer transformaciones adicionales a los coeficientes,  por lo que nos parece adecuado elegir este como el mejor modelo. 
+
+Tomando en cuenta el modelo elegido y habiendo mostrado el cumplimiento de los supuestos del modelo, además de una prueba de hipótesis global satisfactoria, podemos concluir que la relación entre  bmi es directa (positiva) con bpsystol, el incremento en una unidad en mbi, incrementa el bpsystol en 1.76 unidades. Por otra parte, el ser mujer, con respecto a ser hombre, tiene una relación inversa (negativa) con bpsystol, es decir, ser mujer disminuye en 6.886 unidades la bpsystol. Con respecto a la edad, un incremento en una unidad de edad, incrementa bpsystol en 0.483 unidades.  
+
+
+```{r, echo=FALSE}
+#Modelo Reg Lineal con logaritmos
+modelo2=lm(data=datos, I(log(bpsystol)) ~ bmi + sex + age)
+#summary(modelo2)
+#summary(modelo_glm1)
+#stargazer(modelo2, modelo_glm1)
+```
+
+
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\footnotesize
+\begin{tabular}{@{\extracolsep{5pt}}lcc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{2}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-3} 
+\\[-1.8ex] & I(log(bpsystol)) & bpsystol \\ 
+\\[-1.8ex] & \textit{OLS} & \textit{glm: inverse.gaussian} \\ 
+ & \textit{} & \textit{link = identity} \\ 
+\\[-1.8ex] & (1) & (2)\\ 
+\hline \\[-1.8ex] 
+ bmi & 0.009$^{***}$ & 1.176$^{***}$ \\ 
+  & (0.002) & (0.203) \\ 
+  & & \\ 
+ sex2 & $-$0.049$^{***}$ & $-$6.886$^{***}$ \\ 
+  & (0.015) & (1.906) \\ 
+  & & \\ 
+ age & 0.004$^{***}$ & 0.483$^{***}$ \\ 
+  & (0.0004) & (0.057) \\ 
+  & & \\ 
+ Constant & 4.461$^{***}$ & 80.022$^{***}$ \\ 
+  & (0.042) & (5.254) \\ 
+  & & \\ 
+\hline \\[-1.8ex] 
+Observations & 295 & 295 \\ 
+R$^{2}$ & 0.321 &  \\ 
+Adjusted R$^{2}$ & 0.314 &  \\ 
+Log Likelihood &  & $-$1,238.068 \\ 
+Akaike Inf. Crit. &  -376.2099 (\textbf{2485.747}) & \textbf{2,484.136} \\ 
+Residual Std. Error & 0.127 (df = 291) &  \\ 
+F Statistic & 45.922$^{***}$ (df = 3; 291) &  \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
+
+
+
+\newpage
+
 ## 3. Modelos lineales generalizados para datos binarios
 
-La base de datos Preg3B.csv contiene información sobre 862 insectos que fueron expuestos a diferentes dosis (Deposit, mg) de tres insecticidas (Insecticide). La asignación a una dosis y al tipo de insecticida se realizó de forma aleatoria. Después de seis días se analizó si los insectos se habían muerto, de manera que la base de datos contiene también el número de insectos muertos (Killed) y el número total de insectos expuestos (Number) por cada dosis e insecticida. Dado que se asume que el costo de los insecticidas es el mismo, el objetivo del análisis es identificar para cada insecticida qué dosis es la mínima con la que se puede indicar que el 70% de los insectos se muere, así como si considerando la menor de esas tres dosis se puede afirmar que un insecticida es el mejor comparado con el resto.
-
-Notar que aquí el evento de interés es si el insecto muere o no. Además, dado que se tienen varios insectos para diferentes valores de dosis e insecticida, es posible realizar gráficas que ayudan a entender lo que se está modelando; de hecho la base de datos está en un formato agregado.
-
-i. Presente una gráfica de dispersión en donde en el eje x se incluye la dosis del insecticida y en el eje y la proporción de insectos muertos observados para cada combinación dosis-insecticida, distinguiendo con un color el insecticida asociado. Describa lo que se observa.
-
-ii. Ajuste modelos para datos binarios (ligas: logit, probit, cloglog) en donde incluya como covariables a Insecticide y lnD (lnD = ln(Deposit)), así como su interacción. Describa las expresiones del componente lineal o sistemático para cada insecticida como función de lnD. Indique si alguno de los modelos parece adecuado para realizar el análisis deseado.
-
-iii. Ajuste modelos para datos binarios (ligas: logit, probit, cloglog) en donde adicional a las covariables incluidas en ii), también incluya a la interacción de Insecticide con lnD2. Describa las expresiones del componente lineal o sistemático para cada insecticida como función de lnD. Indique si alguno de los modelos parece adecuado para realizar el análisis deseado y si tiene alguna ventaja la inclusión de los términos cuadráticos en el modelo.
-
-
-iv. Sólo con el modelo que considere más adecuado entre los que se ajustaron en ii) y iii)
-
-a. presente en la misma gráfica generada en i) los resultados de la estimación puntual para el valor esperado de la variable binaria (probabilidad de que un insecto muera).
-
-b. calcule la dosis mínima para cada insecticida con la que se puede indicar que el 70% de los insectos se muere.
-
-c. considerando la menor de las dosis encontradas en b), ¿se puede indicar que un insecticida es el mejor? Realice una prueba de hipótesis para argumentar en favor o en contra.
-
-d. En general ¿se puede indicar que los insecticidas A y B tienen un desempeño similar? Realice una prueba de hipótesis para argumentar en favor o en contra.
+La base de datos Preg3B.csv contiene información sobre 862 insectos que fueron expuestos a diferentes dosis en mg (Deposit) de tres insecticidas (Insecticide). La asignación a una dosis y al tipo de insecticida se realizó de forma aleatoria. Después de seis días se analizó si los insectos se habían muerto, de manera que la base de datos contiene también el número de insectos muertos (Killed) y el número total de insectos expuestos (Number) por cada dosis e insecticida. Dado que se asume que el costo de los insecticidas es el mismo, el objetivo del análisis es identificar para cada insecticida qué dosis es la mínima con la que se puede indicar que el 70% de los insectos se muere, así como si considerando la menor de esas tres dosis se puede afirmar que un insecticida es el mejor comparado con el resto. El evento de interés es si el insecto muere o no (died).
 
 
 ### i) Gráfica de dispersión de dosis del insecticida y la proporción de insectos muertos.
 
 
+```{r, echo=FALSE}
+datos<-read_csv("https://raw.githubusercontent.com/LeobardoEnriquezH/Data/main/Preg3B.csv", show_col_types = FALSE)
+datos$Insecticide<-factor(datos$Insecticide) #declaramos la variable como factor
+
+#Realizamos un relevel para poner como referencia "1"
+datos$Insecticide<-relevel(datos$Insecticide,"A")
+```
+
+
+
+
+
+```{r, echo=FALSE}
+#Creamos dato de proporcion de insectos que mueren
+datos$p_Killed<-datos$Killed/datos$Number
+```
+
+
+
+Se presenta una gráfica de dispersión en donde en el eje $x$ se incluye la dosis del insecticida (Deposit) y en el eje $y$ la proporción de insectos muertos observados (p_Killed) para cada combinación dosis-insecticida (Deposit-Insecticide), distinguiendo con un color el insecticida asociado. Se puede observar que el insecticida C tiene una mayor tasa de mortalidad para todas las seis dosis consideradas (solamente la primera dosis es menor a 70%). Para el caso de los insecticidas A y B, los resultados son muy parecidos, aunque marginalmente parece que el insecticida A tiene menor tasa de mortalidad, al menos de manera evidente en tres dosis distintas.   
+
+```{r, echo=FALSE, fig.width = 6, fig.height = 2.5}
+ggplot(data=datos, aes(x=Deposit,y=p_Killed, colour=Insecticide))+ geom_point()+ theme_bw()+
+  theme(text = element_text(size = 11),element_line(linewidth =0.5))
+```
+
+
+
+
 ### ii) Ajuste modelos para datos binarios 1
+
+Ajustaremos modelos para datos binarios (ligas: logit, probit, y cloglog) en donde se incluyen como covariables a Insecticide y lnD (lnD = ln(Deposit)), así como su interacción. Se calcularon los tres modelos con interacciones y se muestran en el siguiente Cuadro. De acuerdo con el criterio AIC el modelo más adecuado es el de la liga probit, cuyo AIC fue de 789.28 (el del logit de 789.44 y cloglog de 800.46). Los términos de las interacciones no son significativas para los tres modelos (no se rechaza la hipótesis nula de que los coeficientes son cero), mientras que para el intercepto, InsecticideC y lnD sí se rechaza la hipótesis nula.  Esto sugiere que podría ser más adecuado el modelo reducido. 
+
+Adicionalmente, se calcularon los tres modelos (ligas logit, probit y cloglog) reducidos, sin las interacciones Insecticide-lnD. Todos tienen un menor AIC, en particular el modelo probit. Se puede observar que en estos casos incluso InsecticideB podría ser estadísticamente significativo si consideramos un nivel de significancia estadística del 10%. Si consideramos el modelo reducido, el modelo probit tiene un mejor desempeño por su AIC y por ser más parsimonioso, con componente lineal o sistemático $\beta_0+\beta_1x_1+\beta_2x_2+\beta_3x_3=-2.623+0.209InsecticideB+1.672InsecticideC+1.690lnD$. 
+
+
+
+```{r, echo=FALSE}
+#Convertimos a datos desagrupados (más común en la práctica)
+#library(tidyverse)
+datos$NoKilled<-datos$Number-datos$Killed
+datna_1=datos %>% group_by(Killed,Insecticide,Deposit) %>%
+  do( data.frame(died= rep(1, .$Killed)))
+datna_2=datos %>% group_by(Killed,Insecticide,Deposit) %>%
+  do( data.frame(died= rep(0, .$NoKilled)))
+datna<-rbind(datna_1,datna_2)
+```
+
+
+```{r, echo=FALSE}
+#Generar variables con datos en logaritmos
+datna$lnD=log(datna$Deposit)
+#datos$lnD=factor(datos$lnD) #declaramos la variable como factor
+```
+
+
+
+```{r, echo=FALSE}
+#En general hay 4 ligas que se podrían usar para covariables factores: logit, probit, cloglog y log.
+#Aqui emplearemos 3 ligas porque tenemos una variable numérica entre las covariables, omitimos liga log.
+fitlogit=glm(died~Insecticide*lnD, family = binomial(link="logit"), data=datna)
+#summary(fitlogit)
+
+fitprob=glm(died~Insecticide*lnD, family = binomial(link="probit"), data=datna)
+#summary(fitprob)
+
+fitcll=glm(died~Insecticide*lnD, family = binomial(link="cloglog"), data=datna)
+#summary(fitcll)
+
+```
+
+
+```{r, echo=FALSE}
+#En general hay 4 ligas que se podrían usar para covariables factores: logit, probit, cloglog y log.
+#Aqui emplearemos 3 ligas porque tenemos una variable numérica entre las covariables, omitimos liga log.
+fitlogit_s=glm(died~Insecticide+lnD, family = binomial(link="logit"), data=datna)
+#summary(fitlogit)
+
+fitprob_s=glm(died~Insecticide+lnD, family = binomial(link="probit"), data=datna)
+#summary(fitprob)
+
+fitcll_s=glm(died~Insecticide+lnD, family = binomial(link="cloglog"), data=datna)
+#summary(fitcll)
+
+```
+
+
+
+
+
+```{r, echo=FALSE}
+#stargazer(fitlogit, fitprob, fitcll, fitlogit_s, fitprob_s, fitcll_s)
+```
+
+
+
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\footnotesize
+\begin{tabular}{@{\extracolsep{5pt}}lcccccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{6}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-7} 
+\\[-1.8ex] & \multicolumn{6}{c}{died} \\ 
+\\[-1.8ex] & \textit{logistic} & \textit{probit} & \textit{glm: binomial} & \textit{logistic} & \textit{probit} & \textit{glm: binomial} \\ 
+ & \textit{} & \textit{} & \textit{link = cloglog} & \textit{} & \textit{} & \textit{link = cloglog} \\ 
+\\[-1.8ex] & (1) & (2) & (3) & (4) & (5) & (6)\\ 
+\hline \\[-1.8ex] 
+ InsecticideB & 0.188 & 0.105 & 0.260 & 0.349$^{*}$ & 0.209$^{*}$ & 0.249$^{*}$ \\ 
+  & (0.722) & (0.400) & (0.530) & (0.206) & (0.120) & (0.135) \\ 
+  & & & & & & \\ 
+ InsecticideC & 2.110$^{***}$ & 1.505$^{***}$ & 2.350$^{***}$ & 2.840$^{***}$ & 1.672$^{***}$ & 1.706$^{***}$ \\ 
+  & (0.790) & (0.433) & (0.485) & (0.254) & (0.141) & (0.151) \\ 
+  & & & & & & \\ 
+ lnD & 2.727$^{***}$ & 1.634$^{***}$ & 1.861$^{***}$ & 2.887$^{***}$ & 1.690$^{***}$ & 1.714$^{***}$ \\ 
+  & (0.349) & (0.194) & (0.234) & (0.224) & (0.122) & (0.134) \\ 
+  & & & & & & \\ 
+ InsecticideB:lnD & 0.111 & 0.072 & $-$0.004 &  &  &  \\ 
+  & (0.487) & (0.270) & (0.319) &  &  &  \\ 
+  & & & & & & \\ 
+ InsecticideC:lnD & 0.661 & 0.137 & $-$0.486 &  &  &  \\ 
+  & (0.671) & (0.347) & (0.327) &  &  &  \\ 
+  & & & & & & \\ 
+ Constant & $-$4.231$^{***}$ & $-$2.543$^{***}$ & $-$3.377$^{***}$ & $-$4.461$^{***}$ & $-$2.623$^{***}$ & $-$3.138$^{***}$ \\ 
+  & (0.524) & (0.289) & (0.392) & (0.356) & (0.194) & (0.238) \\ 
+  & & & & & & \\ 
+\hline \\[-1.8ex] 
+Observations & 862 & 862 & 862 & 862 & 862 & 862 \\ 
+Log Likelihood & $-$388.721 & $-$388.640 & $-$394.229 & $-$389.246 & $-$388.727 & $-$395.786 \\ 
+Akaike Inf. Crit. & 789.443 & 789.280 & 800.458 & 786.491 & 785.454 & 799.571 \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{6}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
+
+
+  
+
+
+
+
+
+```{r, echo=FALSE}
+#A continuación se muestran los valores AIC y BIC, respectivamente, para las ligas logit, probit y cloglog. Como se mencinó anteriormente, se elige el modelo con el menor AIC, que es el de la liga probit. 
+#Además con el modelo completo también los criterios AIC y BIC coinciden
+# ("AIC:logit probit cloglog")
+# c(AIC(fitlogit), AIC(fitprob),  AIC(fitcll))
+# ("BIC:logit probit cloglog")
+# c(BIC(fitlogit), BIC(fitprob), BIC(fitcll))
+```
+
+
+
+La prueba de hipótesis global con la chi-cuadrada del modelo **probit reducido** muestra un valor Chisq de 264.5619	y un p-value muy pequeño (Pr(>Chisq): 4.633875e-57), mucho menor a 0.05, es decir se rechaza la hipótesis nula, por lo que podríamos proceder con el análisis de los supuestos del modelo. Antes de continuar, revisaremos en el siguiente inciso algunos modelos que incluyan $(lnD)^2$, y veremos si tienen menor AIC. 
+
+
+
+```{r, echo=FALSE, message=FALSE, include=FALSE}
+#La primera prueba que se debe realizar es 
+#la similar a la prueba asociada a la tabla ANOVA en regresión lineal múltiple
+
+library(multcomp)
+K=matrix(c(0,1,0,0,
+           0,0,1,0,
+           0,0,0,1), ncol=4, nrow=3, byrow=TRUE)
+m=c(0,0,0)
+summary(glht(fitprob_s, linfct=K, rhs=m), test=Chisqtest())  #Chisqtest() es apropiada para datos donde y no es continua
+
+# Se rechaza H0, lo que implica que se puede proceder
+# al análisis del modelo
+```
+
 
 
 ### iii) Ajuste modelos para datos binarios 2
 
+A continuación incluiremos, adicional a los términos de las covariables anteriores, a la interacción de Insecticide con el término cuadrádico (lnD)^2. Para las ligas logit y probit, ninguna de las intersecciones con lnD y (lnD)^2 rechazan la hipótesis nula, es decir ninguna aparece estadísticamente significativa porque el p-value asociado es mayor a 0.05. Para el caso del cloglog, la única intersección estadísticamente significativa al 5% de significancia estadística es InsecticideC:lnD. En los tres modelos se rechaza la hipótesis nula para el intercepto, InsecticideC, lnD y lnD2. Los AIC son  786.61, 786.92 y 786.06 para los modelos con liga logit, probit y cloglog, respectivamente, lo que indica que el mejor modelo por el criterio AIC es el de la liga cloglog. 
 
-
-### iv) Modelo adecuado. Comparaciones y prueba de hipótesis.
-
-
-
+Adicionalmente, se procedió a hacer un modelo reducido con sólo efectos principales, sin estas interacciones y el resultado es que hay menores AIC para los tres modelos considerando las variables explicativas Insecticide, lnD y lnD2, sin las interacciones. Por ejemplo, el menor AIC es de 780.01 para el caso de la liga probit, con componente lineal o sistemático $\beta_0+\beta_1x_1+\beta_2x_2+\beta_3x_3+\beta_4x_4=-3.920+0.195InsecticideB+1.701InsecticideC+3.775lnD-0.750(lnD)^2$.  
 
 
 
 
 
-## 4. Modelos lineales generalizados para datos de conteos
-
-La base de datos Preg4.csv contiene información sobre el número de casos de cáncer de pulmón (Cases) registrados entre 1968 y 1971 en cuatro cuidades de Dinamarca (City). En estos casos se registró también la edad de los pacientes (Age, variable categorizada en 5 grupos). El interés del análisis es estudiar si se puede indicar que a mayor edad existe mayor incidencia de cáncer de pulmón. Notemos que para realizar el análisis la variable de conteos Cases depende de forma inherente de la población de la ciudad (Pop), pues entre más grande la ciudad es mayor el número de casos que se pueden observar; de manera que el estudio se debe enfocar en las tasas de incidencia.
-
-
-i. Presente una gráfica de dispersión en donde en el eje x se incluyan los grupos de edad (ordenados de menor edad a mayor) y en el eje y la tasa de incidencia (Cases/Pop) por cada cruce Age-City, distinguiendo con un color la Ciudad. Describa lo que se observa.
+```{r, echo=FALSE}
+datna$lnD2=datna$lnD*datna$lnD
+```
 
 
-ii. Como un primer modelo considere la distribución Poisson con liga logarítmica y las covariables Age y City, así como su interacción. Dado que las dos covariables son categóricas, este modelo con interacciones tiene muchos parámetros y es deseable trabajar con uno más simple. Para esto considere un segundo modelo donde sólo se usa como covariable a Age. Realice una prueba de hipótesis para argumentar si es posible considerar el segundo modelo [recuerde que dado que los modelos son anidados, podría usar la función anova(mod1, mod2, test = ”Chisq”), también puede usar multcomp, pero hay muchos parámetros y podría ser tedioso]. Complemente su decisión con lo que se observa en la gráfica en i) y con medidas como AIC o BIC.
+```{r, echo=FALSE}
+#En general hay 4 ligas que se podrían usar para covariables factores: logit, probit, cloglog y log.
+#Aqui emplearemos 3 ligas porque tenemos una variable numérica entre las covariables, omitimos liga log.
+fitlogit=glm(died~Insecticide*lnD+Insecticide*lnD2, family = binomial(link="logit"), data=datna)
+#summary(fitlogit)
+
+fitprob=glm(died~Insecticide*lnD+Insecticide*lnD2, family = binomial(link="probit"), data=datna)
+#summary(fitprob)
+
+fitcll=glm(died~Insecticide*lnD+Insecticide*lnD2, family = binomial(link="cloglog"), data=datna)
+#summary(fitcll)
+
+```
 
 
-iii. Considerando el modelo seleccionado en ii), ajuste un modelo binomial negativo. Compare ambos modelos e indique cuál podría ser adecuado para realizar el análisis deseado. Con el modelo seleccionado, calcule intervalos de confianza simultáneos de las tasas de incidencia para cada grupo de edad, incluya estos en la gráfica presentada en i). Comente los resultados, en particular si se puede indicar que a mayor edad existe mayor incidencia de cáncer de pulmón.
+
+```{r, echo=FALSE}
+#En general hay 4 ligas que se podrían usar para covariables factores: logit, probit, cloglog y log.
+#Aqui emplearemos 3 ligas porque tenemos una variable numérica entre las covariables, omitimos liga log.
+fitlogit_s=glm(died~Insecticide+lnD +lnD2, family = binomial(link="logit"), data=datna)
+#summary(fitlogit)
+
+fitprob_s=glm(died~Insecticide+lnD +lnD2, family = binomial(link="probit"), data=datna)
+#summary(fitprob)
+
+fitcll_s=glm(died~Insecticide+lnD +lnD2, family = binomial(link="cloglog"), data=datna)
+#summary(fitcll)
+
+```
 
 
-iv. Opcional (1 punto) Los incisos anteriores usaron a la variable Age como categórica, sin embargo, eso dificulta un poco la interpretación, además de que por su naturaleza esa variable se podría haber registrado sin categorizar. Con los datos actuales, una aproximación sería usar el punto medio de cada intervalo de edad que define las categorías de Age y usar la variable resultante como una variable continua, llámela Ageprima. Ajuste modelos usando la distribución Poisson y Binomial Negativa con la covariable Ageprima, también considere la opción de incluir a Ageprima2. Entre esos 4 modelos indique cuál podría ser adecuado para realizar el análisis. Con ese modelo indique si a mayor edad existe mayor incidencia de cáncer de pulmón, por ejemplo, analizando si la función es creciente considerando que el intervalo de edad que es de interés es entre 40 y 74 años. Presente una gráfica que complemente su análisis.
 
 
-### i) Gráfica de dispersión de grupos de edad e incidencia
+
+```{r, echo=FALSE}
+#stargazer(fitlogit, fitprob, fitcll, fitlogit_s, fitprob_s, fitcll_s)
+```
+
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\footnotesize
+\begin{tabular}{@{\extracolsep{5pt}}lcccccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{6}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-7} 
+\\[-1.8ex] & \multicolumn{6}{c}{died} \\ 
+\\[-1.8ex] & \textit{logistic} & \textit{probit} & \textit{glm: binomial} & \textit{logistic} & \textit{probit} & \textit{glm: binomial} \\ 
+ & \textit{} & \textit{} & \textit{link = cloglog} & \textit{} & \textit{} & \textit{link = cloglog} \\ 
+\\[-1.8ex] & (1) & (2) & (3) & (4) & (5) & (6)\\ 
+\hline \\[-1.8ex] 
+ InsecticideB & 2.013 & 0.679 & 1.973 & 0.325 & 0.195 & 0.221$^{*}$ \\ 
+  & (2.589) & (1.361) & (2.085) & (0.204) & (0.120) & (0.133) \\ 
+  & & & & & & \\ 
+ InsecticideC & 6.150$^{**}$ & 2.934$^{**}$ & 6.139$^{***}$ & 2.976$^{***}$ & 1.701$^{***}$ & 1.663$^{***}$ \\ 
+  & (2.684) & (1.388) & (1.825) & (0.271) & (0.145) & (0.152) \\ 
+  & & & & & & \\ 
+ lnD & 9.085$^{***}$ & 4.717$^{***}$ & 8.599$^{***}$ & 6.813$^{***}$ & 3.775$^{***}$ & 4.117$^{***}$ \\ 
+  & (2.778) & (1.474) & (2.173) & (1.408) & (0.782) & (0.857) \\ 
+  & & & & & & \\ 
+ lnD2 & $-$2.167$^{**}$ & $-$1.066$^{**}$ & $-$2.198$^{***}$ & $-$1.407$^{***}$ & $-$0.750$^{***}$ & $-$0.844$^{***}$ \\ 
+  & (0.918) & (0.499) & (0.691) & (0.491) & (0.276) & (0.295) \\ 
+  & & & & & & \\ 
+ InsecticideB:lnD & $-$2.479 & $-$0.773 & $-$2.376 &  &  &  \\ 
+  & (3.663) & (1.982) & (2.790) &  &  &  \\ 
+  & & & & & & \\ 
+ InsecticideC:lnD & $-$5.238 & $-$1.872 & $-$5.572$^{**}$ &  &  &  \\ 
+  & (4.300) & (2.198) & (2.530) &  &  &  \\ 
+  & & & & & & \\ 
+ InsecticideB:lnD2 & 0.839 & 0.277 & 0.748 &  &  &  \\ 
+  & (1.231) & (0.678) & (0.895) &  &  &  \\ 
+  & & & & & & \\ 
+ InsecticideC:lnD2 & 1.971 & 0.628 & 1.558$^{*}$ &  &  &  \\ 
+  & (1.656) & (0.817) & (0.843) &  &  &  \\ 
+  & & & & & & \\ 
+ Constant & $-$8.512$^{***}$ & $-$4.560$^{***}$ & $-$8.123$^{***}$ & $-$6.946$^{***}$ & $-$3.920$^{***}$ & $-$4.647$^{***}$ \\ 
+  & (1.993) & (1.022) & (1.637) & (0.967) & (0.524) & (0.594) \\ 
+  & & & & & & \\ 
+\hline \\[-1.8ex] 
+Observations & 862 & 862 & 862 & 862 & 862 & 862 \\ 
+Log Likelihood & $-$384.307 & $-$384.460 & $-$384.028 & $-$385.098 & $-$385.006 & $-$391.604 \\ 
+Akaike Inf. Crit. & 786.613 & 786.919 & 786.055 & 780.196 & 780.011 & 793.208 \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{6}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
 
 
-### ii) Distribución Poisson con liga logarítmica y un segundo modelo
 
-### iii) Ajuste un modelo binomial negativo. Comparación con el anterior.
+```{r, echo=FALSE}
+#Además con el modelo completo también los criterios AIC y BIC coinciden
+# ("AIC:logit probit cloglog")
+# c(AIC(fitlogit), AIC(fitprob),  AIC(fitcll))
+# ("BIC:logit probit cloglog")
+# c(BIC(fitlogit), BIC(fitprob), BIC(fitcll))
+```
+
+ 
+La prueba de hipótesis global con la chi-cuadrada del modelo **probit reducido** muestra un valor Chisq de 254.2325	y un p-value muy pequeño (Pr(>Chisq): 7.974736e-54), mucho menor a 0.05, es decir se rechaza la hipótesis nula, por lo que podemos proceder con el análisis de los supuestos de este modelo reducido más sencillo con el menor AIC.   
 
 
-### iv) Opcional (1 punto). Modelo con distribución Poisson y Binomial Negativa con Age modificado
+```{r, echo=FALSE, message=FALSE, include=FALSE}
+#La primera prueba que se debe realizar es 
+#la similar a la prueba asociada a la tabla ANOVA en regresión lineal múltiple
 
+library(multcomp)
+K=matrix(c(0,1,0,0,0,
+           0,0,1,0,0,
+           0,0,0,1,0,
+           0,0,0,0,1), ncol=5, nrow=4, byrow=TRUE)
+m=c(0,0,0,0)
+summary(glht(fitprob_s, linfct=K, rhs=m), test=Chisqtest())  #Chisqtest() es apropiada para datos donde y no es continua
+
+# Se rechaza H0, lo que implica que se puede proceder
+# al análisis del modelo
+```
+
+
+Se puede notar que una ventaja de introducir el componente $(lnD)^2$ es que los AIC disminuyeron, por lo que nos quedamos con este modelo probit reducido, para los análisis subsecuentes. 
+
+```{r, echo=FALSE}
+# Se incluye cierta aleatorización para datos binarios
+library(statmod)
+fitlogitqr <- qresid(fitprob_s)
+#qqnorm( fitlogitqr, las=1 ); qqline( fitlogitqr) 
+lilKS<-nortest::lillie.test(fitlogitqr)
+Shapiro<-shapiro.test(fitlogitqr)
+```
+
+En la prueba de normalidad ``Lilliefors (Kolmogorov-Smirnov) normality test`` tenemos que el p-value es de `r lilKS[2]`, por lo que no se rechaza la hipótesis nula de normalidad. Por otra parte, pa la prueba de normalidad de ``Shapiro-Wilk normality test`` el p-value es de `r Shapiro[2]`, lo que también no rechaza la hipótesis nula de normalidad. Esto se observa en la siguiente Gráfica. 
+
+
+
+```{r, echo=FALSE, warning=FALSE,message=FALSE, fig.width = 8, fig.height = 4}
+library(DHARMa)  #Los residuales simulados también son útiles en este caso
+set.seed(123)
+fitprobitres <- simulateResiduals(fittedModel = fitprob_s)
+plot(fitprobitres)
+```
+
+```{r, echo=FALSE}
+deviance_df<-deviance(fitprob_s)/df.residual(fitprob_s)
+```
+
+
+
+La regla de dedo para verificar el **parámetro de dispersión** de 1, con la devianza de residuales entre grados de libertad, muestra un valor de `r deviance_df`, lo cual se acerca a 1. 
+
+
+### iv) Modelo adecuado. Comparaciones, probabilidades y prueba de hipótesis.
+
+
+```{r, echo=FALSE}
+
+newdata <- data.frame(Insecticide = c("A", "A","A","A", "A","A","B","B", "B", "B","B", "B","C","C", "C", "C","C", "C"), lnD = c(0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415, 0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415, 0.6931472, 0.9707789, 1.2470323,1.5238800, 1.8017098, 2.0794415), lnD2 = c(0.4804530, 0.9424117, 1.5550895,2.32221, 3.246158, 4.32407, 0.4804530, 0.9424117, 1.5550895,2.32221, 3.246158, 4.32407, 0.4804530, 0.9424117, 1.5550895,2.32221, 3.246158, 4.32407) )
+newdata$prob_s <- predict(fitprob_s, newdata[,1:3], type = c("response"), se.fit=TRUE)$fit
+
+newdata$Deposit<-exp(newdata$lnD)
+
+#kable(newdata)
+
+```
+
+
+
+
+
+La siguiente gráfica de dispersión muestra en el eje $x$ la dosis del insecticida (Deposit) y en el eje $y$ la proporción de insectos muertos observados (se generó la variable p_Killed) para cada combinación dosis-insecticida (Deposit-Insecticide), distinguiendo el insecticida asociado por colores. Adicionalmente se agregaron las curvas con las probabilidades obtenidas con el modelo probit para cada dosis e insecticida. Con el modelo se obtuvieron probabilidades muy cercanas a las proporciones o tasas de mortalidad observadas, especialmente para el insecticida C.     
+
+
+```{r, echo=FALSE}
+
+newdata1<- newdata[,-c(1,5)]
+datosfin<-cbind(datos,newdata1)
+```
+
+
+```{r, echo=FALSE, fig.width = 6, fig.height = 2.5}
+ggplot(data=datos, aes(x=Deposit,y=p_Killed, colour=Insecticide))+ geom_point() +theme_bw()+
+  geom_line(data=datosfin, aes(x=Deposit,y=prob_s, colour=Insecticide))+theme_bw()
+```
+
+
+A continuación se muestra un cuadro de la dosis mínima para cada insecticida con la que se puede indicar que el 70% de los insectos se muere. Para ello recordemos que $\Phi^{-1}(0.7)=\beta_0+\beta_3lnD+\beta_4(lnD)^2$, $\Phi^{-1}(0.7)=\beta_0+\beta_1InsecticidaB+\beta_3lnD+\beta_4(lnD)^2$ y $\Phi^{-1}(0.7)=\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2$, por lo que resolviendo para cada insecticida, se obtienen los respectivos valores de $lnD$ y por lo tanto de $D$ que es la dósis en mg (Deposit). Es decir, para A, resolveremos $\beta_4(lnD)^2+\beta_3lnD+(\beta_0-\Phi^{-1}(0.7))$, para B $\beta_4(lnD)^2+\beta_3lnD+ (\beta_0+\beta_1-\Phi^{-1}(0.7))$ y para C $\beta_4(lnD)^2+\beta_3lnD+(\beta_0+\beta_2-\Phi^{-1}(0.7))$. 
+
+
+
+```{r, echo=FALSE}
+#Resolver función cuadrática 
+quad <- function(a, b, c)
+{
+  a <- as.complex(a)
+  answer <- c((-b + sqrt(b^2 - 4 * a * c)) / (2 * a),
+              (-b - sqrt(b^2 - 4 * a * c)) / (2 * a))
+  if(all(Im(answer) == 0)) answer <- Re(answer)
+  if(answer[1] == answer[2]) return(answer[1])
+  answer
+}
+```
+
+
+
+```{r, echo=FALSE}
+#Para insecticida A
+a=fitprob_s$coefficients[5]
+b=fitprob_s$coefficients[4]
+c=fitprob_s$coefficients[1]-qnorm(.7)
+
+D_A<-exp(quad(a, b, c))
+
+```
+
+
+
+```{r, echo=FALSE}
+#Para insecticida B
+a=fitprob_s$coefficients[5]
+b=fitprob_s$coefficients[4]
+c=fitprob_s$coefficients[1]+fitprob_s$coefficients[2]-qnorm(.7)
+
+D_B<-exp(quad(a, b, c))
+
+```
+
+
+
+
+```{r, echo=FALSE}
+#Para insecticida C
+a=fitprob_s$coefficients[5]
+b=fitprob_s$coefficients[4]
+c=fitprob_s$coefficients[1]+fitprob_s$coefficients[3]-qnorm(.7)
+
+D_C<-exp(quad(a, b, c))
+
+```
+
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c c c c||} 
+ \hline
+ Insecticida & A & B & C \\ [0.5ex] 
+ \hline\hline
+ Dósis Mínima & `r D_A[1]` & `r D_B[1]` & `r D_C[1]` \\ [1ex] 
+ \hline
+\end{tabular}
+\caption{}
+\label{}
+\end{table}
+
+
+
+
+Como se observa en la Gráfica anterior, el insecticida C es mejor, pues con menores dosis se tienen mayor probabilidad de muerte que A y B según el modelo probit. Además, como se mostró en el cuadro anterior, se encontró que la menor dósis mínima con la que el 70% se muere es para el insecticida C. A continuación mostramos una prueba de hipótesis que comprueba esto. Planteamos entonces que $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_3lnD+\beta_4(lnD)^2$ y    $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_1InsecticidaB +\beta_3lnD+\beta_4(lnD)^2$, de donde obtenemos la hipótesis nula $H_0: \beta_2InsecticidaC<0$ o $\beta_2InsecticidaC<\beta_1InsecticidaB$ y la hipótesis alternativa $H_a: \beta_2InsecticidaC > 0$ y $\beta_2InsecticidaC > \beta_1InsecticidaB$. 
+
+
+
+```{r, echo=FALSE, include=FALSE}
+library(multcomp)
+K=matrix(c(0,0,1,0,0,
+           0,-1,1,0,0), ncol=5, nrow=2, byrow=TRUE)
+m=c(0,0)
+summary(glht(fitprob_s, linfct=K, rhs=m, alternative="greater"), test=Chisqtest())
+```
+
+Resultado: Chisq: $152.8355$ y p-value: $6.489137$e-34. Lo que rechaza la hipótesis nula, es decir no hay suficiente evidencia para asegurar que el insecticida C tenga menor efectividad que A y B.  
+
+
+A continuación se muestra la prueba de hipótesis que muestra si A y B tienen un desempeño similar. En este caso planteamos que $\beta_0+\beta_3lnD+\beta_4(lnD)^2=\beta_0+\beta_1InsecticidaB+\beta_3lnD+\beta_4(lnD)^2$ de donde tenemos la prueba de hipótesis $H_0: \beta_1InsecticidaB=0$ y la alternativa $H_a: \beta_1InsecticidaB\neq0$. 
+
+
+
+```{r, echo=FALSE, include=FALSE}
+library(multcomp)
+K=matrix(c(0,1,0,0,0), ncol=5, nrow=1, byrow=TRUE)
+m=c(0)
+summary(glht(fitprob_s, linfct=K, rhs=m), test=Chisqtest())
+```
+
+
+Resultado: Chisq: $2.652954$ y p-value: $0.1033576$. Lo que no rechaza la hipótesis nula, es decir no hay suficiente evidencia para rechazar que el insecticida A tenga el mismo desempeño que B.  
+
+
+
+
+
+
+\newpage 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
 
 
 
@@ -170,36 +1181,264 @@ iv. Opcional (1 punto) Los incisos anteriores usaron a la variable Age como cate
 ## 5. Modelos lineales generalizados para datos categóricos
 
 
-La base de datos Preg5.csv contiene información sobre el nivel de satisfacción (Sat) de un conjunto de individuos que rentan una vivienda. El interés es identificar si entre los factores que definen este nivel están: el tipo de vivienda (Type), la percepción sobre su influencia en las decisiones sobre el mantenimiento de la vivienda (Infl) y el contacto que tienen con el resto de inquilinos (Cont).
-
-
-i. En este caso todas las covariables son categóricas, así que se puede obtener una gráfica que describa las frecuencias relativas para los tres niveles de satisfacción considerando cada cruce Type-Infl-Cont. Presente esta gráfica y comente lo que se observa.
-
-
-ii. Ajuste un modelo logístico multinomial considerando todas las posibles interacciones entre Type, Infl y Cont. Este modelo tiene demasiados parámetros y es de interés buscar si es posible considerar un modelo más simple. Ajuste un modelo logístico multinomial que incluya a las tres covariables Type, Infl y Cont, pero sin considerar interacciones. Realice una prueba de hipótesis para argumentar si es plausible considerar el modelo más simple. Complemente esto con medidas como AIC o BIC.
-
-Nota computacional. Para los modelos ajustados en vglm no es posible usar directamente el paquete multcomp, pero está disponible una función anova() que permite comparar dos modelos, siempre que estos estén anidados, por ejemplo: anova(mod1, mod2, test = ”LRT”, type = ”I”) o equivalentemente lrtest(mod1, mod2).
-
-
-iii. Considerando las covariables del modelo ajustado en ii) y notando que la variable Sat puede ser considerada como ordinal, ajuste un modelo logístico acumulativo (cumulative logit) sin considerar el supuesto de proporcionalidad. También ajuste un modelo que asuma el supuesto de proporcionalidad y dado que este último está anidado en el primero, realice una prueba de hipótesis para analizar si es plausible asumir este modelo más sencillo. Complemente su decisión con medidas como AIC o BIC.
-
-
-iv. Usando el AIC o BIC, seleccione sólo un modelo entre los ajustados en ii) y iii). Con ese modelo, trate de interpretar los resultados. Por ejemplo, puede apoyarse de una gráfica como la realizada en i), pero donde se presenten las probabilidades estimadas para cada nivel de satisfacción. Por simplicidad sólo analice el efecto que se observa al considerar la variable Infl, cuando se asume que la persona renta una vivienda tipo Apartment y tiene un nivel de contacto con otros inquilinos como High.
+La base de datos Preg5.csv contiene información sobre el nivel de satisfacción (Sat) de un conjunto de individuos que rentan una vivienda. El interés es identificar si entre los factores que definen este nivel están: el tipo de vivienda (Type: apartment, atrium, terrace y tower), la percepción sobre su influencia en las decisiones sobre el mantenimiento de la vivienda (Infl: high, medium y low) y el contacto que tienen con el resto de inquilinos (Cont: high y low). 
 
 
 
 
 ### i) Gráfica de frecuencias relativas
 
+```{r, echo=FALSE, include=FALSE}
+Datos<-read_csv("Preg5.csv", show_col_types = FALSE)
+```
 
 
-### ii) Modelo logístico multinomial
+```{r, echo=FALSE}
+Datos[sapply(Datos, is.character)] <- lapply(Datos[sapply(Datos, is.character)], as.factor)
+```
 
 
-### iii)  Modelo logístico acumulativo (cumulative logit)
+Todas las covariables son categóricas, a continuación mostramos la gráfica que describe las frecuencias relativas para los tres niveles de satisfacción considerando cada cruce Type-Infl-Cont (en ese orden). Podemos observar que la mayor satisfacción (74%) se presenta en Tower.High.High, que se refiere a vivir en una torre, con alta influencia sobre el mantenimiento de la vivienda y con alto contacto con el resto de los inquilinos. Por otro lado, el menor nivel de satisfacción (14%) corresponde a vivir en una terraza, con baja influencia sobre el mantenimiento de la vivienda y con alto nivel de contacto con los demás inquilinos. 
+
+
+
+```{r, echo=FALSE, message=FALSE, highlight=FALSE, fig.width = 6, fig.height = 4}
+Datos$TypeInflCont=factor(paste(Datos$Type, Datos$Infl, Datos$Cont, sep="."))
+v.Type.Infl.Cont=(Datos$TypeInflCont)
+v.Sat=Datos$Sat
+BarChart(x=v.Type.Infl.Cont , by=v.Sat, stack100=TRUE, srt=0, horiz=TRUE)
+
+```
+
+
+### ii) Modelo logístico multinomial nominal
+
+Ajustamos varios modelos para la variable dependiente de satisfacción (Sat), considerando en un modelo completo las intereacciones de la influencia sobre mantenimiento (Infl), tipo de vivienda (Type) y contacto con otros vecinos (Cont) y no considerando estas interacciones en un modelo reducido. Luego hacemos uso de la función anova que nos permite realizar análisis de varianza entre los modelos ajustados, planteando las hiótesis $H_0:\text{Podemos utilizar el modelo reducido}$ contra $H_a:\text{Debemos utilizar el modelo completo}$. El p-value asociado a la prueba es menor a 0.05, por lo que a un nivel de confianza de 95%, no tenemos evidencia para rechazar la hipótesis nula, por lo tanto podemos usar el modelo reducido.   
+
+
+```{r, echo=FALSE}
+#Primero ajustamos un modelo de Satisfacción (Sat) con todas las interacciones posibles
+#Entre influencia sobre mantenimiento, tipo de vivienda y contacto con otros vecinos (Infl, Type y Cont)
+
+fit_comp <- vglm(Sat ~ Infl*Type*Cont, #Fórmula
+                  family = multinomial(refLevel = "Low"), #Familia
+                  data = Datos) #Datos
+#Funciona de forma equivalente a los glm 
+
+#Posteriormente un modelo que no contenga ninguna interacción
+fit_no_int <- vglm(Sat ~ Infl+Type+Cont,
+                     family = multinomial(refLevel = "Low"),
+                     data = Datos)
+```
+
+
+
+
+```{r, echo=FALSE}
+#summary(fit_comp)
+#coef(fit_comp, matrix = TRUE) # Le indicamos que nos los muestre como matriz
+```
+
+
+
+```{r, echo=FALSE}
+#summary(fit_no_int)
+#coef(fit_no_int, matrix = TRUE) # Le indicamos que nos los muestre como matriz
+```
+
+
+
+```{r, echo=FALSE}
+#Escribimos los dos modelos y la salida es la prueba
+anova(fit_no_int, fit_comp, test="LRT", type = "I")
+```
+
+
+
+```{r, echo=FALSE}
+AIC_fit_comp<-AIC(fit_comp)
+AIC_fit_no_int<-AIC(fit_no_int)
+```
+
+
+Por otra parte, podemos calcular las AIC de ambos modelos, el resultado es que el AIC del modelo completo o con interacciones es de `r AIC_fit_comp` y para el modelo reducido es de `r AIC_fit_no_int`. Por lo tanto, se tiene una mayor evidencia de que el modelo reducido es mejor por tener un menor AIC. 
+
+
+```{r, echo=FALSE}
+summary(fit_no_int)
+```
+
+
+
+### iii)  Modelo logístico acumulativo (cumulative logit) ordinal
+
+Considerando las covariables del modelo reducido (sin interacciones) y la variable Sat como ordinal, ajustaremos un modelo logístico acumulativo (cumulative logit) sin considerar el supuesto de proporcionalidad (parallel) y otro asumiendo este supuesto.  Dado que este último está anidado en el primero, realizaremos una prueba de hipótesis con la función anova para analizar si es plausible asumir este modelo más sencillo, donde planteamos las hipótesis $H_0:\text{Podemos utilizar el modelo reducido}$ contra $H_a:\text{Debemos utilizar el modelo completo}$. El modelo reducido es aquel que tiene probabilidades proporcionales, así que nos quedaremos con ese modelo, pues no hay suficiente evidencia para rechazar la hipótesis nula. 
+
+
+
+```{r, echo=FALSE}
+Datos$Sat=factor(Datos$Sat, ordered=TRUE, levels = c("Low", "Medium", "High"))
+```
+
+
+
+```{r, echo=FALSE}
+#Ajustamos utilizando de nuevo la función vglm: modelo de probabilidades NO proporcionales
+fit_ord_nopar <- vglm(Sat ~ Infl+Type+Cont,
+                  family = cumulative(parallel = FALSE), #La diferencia es esta
+                  data = Datos)
+#El orden viene de que respuesta es tipo factor y a esta le pusimos orden
+
+
+#Ajustamos utilizando de nuevo la función vglm: modelo de probabilidades proporcionales
+fit_ord_par <- vglm(Sat ~ Infl+Type+Cont,
+                  family = cumulative(parallel = TRUE), #La diferencia es esta
+                  data = Datos)
+
+```
+
+
+
+```{r, echo=FALSE}
+#coef(fit_ord_nopar, matrix=TRUE)
+```
+
+
+```{r, echo=FALSE}
+#summary(fit_ord_par)
+#coef(fit_ord_par, matrix=TRUE)
+```
+
+
+
+
+```{r, echo=FALSE}
+#Comparamos los modelos
+anova(fit_ord_par, fit_ord_nopar, type = "I")
+```
+
+
+
+```{r, echo=FALSE}
+AIC_fit_ord_par<-AIC(fit_ord_par)
+AIC_fit_ord_no_par<-AIC(fit_ord_nopar)
+```
+
+
+Por otro lado, el AIC del modelo logístico acumulativo sin supuesto de proporcionalidad es de `r AIC_fit_ord_no_par` y el AIC  para el modelo logístico acumulativo con el supuesto de proporcionalidad es de `r AIC_fit_ord_par`. Este menor AIC apoya la elección del modelo reducido logístico acumulativo con el supuesto de proporcionalidad.  
+
+
+
+
+```{r, echo=FALSE}
+summary(fit_ord_par)
+```
 
 
 ### iv) Selección del modelo e interpretación de resultados
+
+Comparando los AIC de todos los modelos,  elegimos el modelo logístico multinomial ordinal reducido acumulativo con proporcionalidad, que tiene el menor AIC de `r AIC_fit_ord_par`. A continuación se presenta en una gráfica las probabilidades estimadas para cada nivel de satisfacción (Sat: low, medium y high) al considerar la variable de influencia sobre el mantenimiento (Infl) y el nivel de contacto con otros inquilinos (Cont: high y low), cuando se asume que la persona renta una vivienda tipo Apartment.  
+
+Podemos observar que la Gráfica de la columna izquierda (Cont=low), cuando se tiene contacto bajo con el resto de inquilinos,  muestra las probabilidades de baja, media y alta satisfacción (Sat), considerando únicamente Apartment, y la influencia sobre el mantenimiento (Infl) bajo, medio y alto. En este caso, la probabilidad de baja satisfacción se asocia con mayor probailidad (52%) a Apartments con baja influencia sobre el mantenimiento y bajo contacto con los otras personas que habitan el lugar, y la mayor probabilidad (51%) se asocia con Apartments con alta influencia sobre el mantenimiento, a pesar del bajo contacto. Por otra parte, el la Gráfica de la columna derecha, se observa que hay una probabilidad de satisfacción muy alta (60%) asociada a Apartments donde hay una alta influencia en mantenimiento y alto contacto con los demás inquilinos del lugar, la probabilidad que la satisfacción sea baja en un Apartment de estas características es baja (17%).  
+
+
+
+```{r, echo=FALSE}
+#Agruparemos los datos desagrupados
+Datos$SatTypeInflCont=factor(paste(Datos$Sat, Datos$TypeInflCont, sep="."))
+by_SatTypeInflCont <- Datos %>% group_by(SatTypeInflCont)
+by_SatTypeInflCont<-by_SatTypeInflCont %>% tally()
+Dat <- data.frame(do.call('rbind', strsplit(as.character(by_SatTypeInflCont$SatTypeInflCont),'.',fixed=TRUE)))
+names(Dat) <- c("Sat", "Type", "Infl", "Cont")
+Dat$SatTypeInflCont<-factor(paste(Dat$Sat, Dat$Type, Dat$Infl, Dat$Cont,sep="."))
+DatosAg<-merge(Dat, by_SatTypeInflCont, by = "SatTypeInflCont", all = TRUE)
+```
+
+
+
+
+```{r, echo=FALSE}
+#Obtenemos las combinaciones, aprovechando la tabla agregada
+combinaciones <- unique(DatosAg[,3:5]) %>%
+  arrange(Type, Infl, Cont)
+
+#También podríamos obtenerla con los datos desagregados como:
+#combinaciones <- unique(datos[,1:2]) %>% arrange(Sexo, Edad)
+
+#Con esto aplicamos la función predict, con tipo "response" y tenemos:
+probas <- predict(fit_ord_par, combinaciones, type = "response")
+
+#Finalmente, unimos las combinaciones con sus probabilidafes
+datos_modelo <- data.frame(cbind(combinaciones, probas))
+```
+
+
+
+```{r, echo=FALSE, fig.width = 6, fig.height = 5}
+#Obtenemos las combinaciones, con la tabla agregada
+
+DatosAg_Apartment<-DatosAg%>%filter(Type %in% "Apartment") #Filtramos apartment
+combinaciones <- unique(DatosAg_Apartment[,3:5]) %>%
+  arrange(Type, Infl, Cont)
+
+#También podríamos obtenerla con los datos desagregados como:
+#combinaciones <- unique(datos[,1:2]) %>% arrange(Sexo, Edad)
+
+#Con esto aplicamos la función predict, con tipo "response" y tenemos:
+probas <- predict(fit_ord_par, combinaciones, type = "response")
+
+#Finalmente, unimos las combinaciones con sus probabilidafes
+datos_modelo <- data.frame(cbind(combinaciones, probas))
+
+#Le cambiamos el nombre, para más adelante (en caso de que no aparezcan los nombres)
+colnames(datos_modelo)<-c("Type", "Infl", "Cont", "Low", "Medium", "High")
+
+#En este caso, necesitamos los datos en tipo long
+data_long <- datos_modelo %>% 
+  pivot_longer(cols = c(`Low`, Medium, `High`), 
+               names_to = "Sat", 
+               values_to = "Probabilidad") %>%
+#Aplicamos orden al tipo factor
+mutate("Respuesta"=factor(Sat, levels = c("Low", "Medium", "High")), "Infl"=factor(Infl, levels = c("Low", "Medium", "High")), "Cont"=factor(Cont, levels = c("Low",  "High")))
+
+#Con esto podemos crear la gráfica
+ggplot(data_long, aes(x = Infl, y = Probabilidad, fill = Sat)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8),
+           width = 0.7) +
+  geom_text(aes(label = round(Probabilidad, 2)), 
+            position = position_dodge(width = 0.8), 
+            vjust = -0.7, size = 3) +  # Añadir etiquetas con probabilidades
+  facet_grid(. ~ Cont) + #Este nos permite separar por Cont
+  labs(
+    title = "Probabilidades de Satisfacción (Sat) por Contacto (Cont) e Influencia (Infl)",
+    x = "Influencia (Infl) en mantenimiento del Apartment",
+    y = "Probabilidad"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1), 
+    legend.position = "top"
+  ) + theme_bw()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
