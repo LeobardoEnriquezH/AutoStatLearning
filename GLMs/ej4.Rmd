@@ -220,7 +220,7 @@ plot(fitres_2)
 
 
 
-Lo que sigue sera hacer una prueba anova en la que compararemos ambos modelo y decidir si se puede usar el segundo modelo.
+Lo que sigue sera hacer una prueba anova en la que compararemos ambos modelos y decidir si se puede usar el segundo modelo.
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 anova(ajuste1,ajuste2, test = "Chisq")
