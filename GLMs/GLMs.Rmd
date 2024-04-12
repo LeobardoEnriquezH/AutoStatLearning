@@ -236,7 +236,7 @@ kable_styling(bootstrap_options = "striped", full_width = F)
 ### iii) Asociación entre masa corporal y presión arterial sistólica.
 
 
-Se puede concluir que para una persona de cierta edad y sexo, tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica. Tomando en cuanta en el Cuadro anterior que se rechaza la hipótesis nula $H_0:\beta_1=0$ contra la anternativa de que $H_a: \beta_1 \neq0$, a continuación se plantea la prueba de hipótesis con dirección, en donde la hipótesis nula es $H_0: \beta_1<0$ y la alternativa $H_a: \beta_1>0$. 
+Se puede concluir que para una persona de cierta edad y sexo, tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica. Tomando en cuanta en el Cuadro anterior de MODELOS que se rechaza la hipótesis nula $H_0:\beta_1=0$ contra la anternativa de que $H_a: \beta_1 \neq0$, a continuación se plantea la prueba de hipótesis con dirección, en donde la hipótesis nula es $H_0: \beta_1\leq0$ y la alternativa $H_a: \beta_1>0$. 
 
 
 ```{r, echo=FALSE, message=FALSE}
@@ -255,7 +255,7 @@ prueba_dir<-glht(modelo2, linfct=K, rhs=m, alternative ="greater")
 ```
 
 
-El resultado de la prueba con dirección  ``Simultaneous Tests for General Linear Hypotheses`` con el ajuste $lm(formula = I(log(bpsystol)) \sim bmi + sex + age, data = datos)$ muestra un p-value de $1.2e-09$, lo cual rechaza la hipótesis nula planteada. Por lo tanto, para una persona de cierta edad y sexo, tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica.   
+El resultado de la prueba con dirección  ``Simultaneous Tests for General Linear Hypotheses`` con el ajuste $lm(formula = I(log(bpsystol)) \sim bmi + sex + age, data = datos)$ muestra un p-value de $1.2e-09$, lo cual rechaza la hipótesis nula planteada. La información de los datos proporcionan evidencia en contra de la hipótesis nula por lo que con un nivel de confiaza del 95% es plausible decir que para una persona de cierta edad y sexo, tener un índice de masa corporal alto se asocia con una alta presión arterial sistólica. 
 
 
 ### iv) Gráfica resumen con la estimación puntual de la relación bpsystol y bmi. 
@@ -281,12 +281,12 @@ curva_ajustada_hombre64 <- function(x) {exp(modelo2$coefficients[1] + modelo2$co
 ```{r, echo=FALSE, fig.width = 6, fig.height = 3}
 ggplot(datos, aes(bmi, bpsystol)) +
   geom_point() +
-  geom_function(fun = curva_ajustada_mujer30, aes(linetype = "mujer de 30") ,col="skyblue", lwd = 1) +
-  geom_function(fun = curva_ajustada_hombre30, aes(linetype = "hombre de 30") ,col="green") +
-  geom_function(fun = curva_ajustada_mujer50, aes(linetype = "mujer de 50") ,col="darkblue", lwd = 0.8) +
-  geom_function(fun = curva_ajustada_hombre50, aes(linetype = "hombre de 50") ,col="darkgreen") +
-  geom_function(fun = curva_ajustada_mujer64, aes(linetype = "mujer de 64") ,col="red") +
-  geom_function(fun = curva_ajustada_hombre64, aes(linetype = "hombre de 64") ,col="magenta") + theme_bw()
+  geom_function(fun = curva_ajustada_mujer30, aes(linetype = "mujer de 30") ,col="red", lwd = 1) +
+  geom_function(fun = curva_ajustada_hombre30, aes(linetype = "hombre de 30") ,col="green", lwd = 1) +
+  geom_function(fun = curva_ajustada_mujer50, aes(linetype = "mujer de 50") ,col="red", lwd = 0.8) +
+  geom_function(fun = curva_ajustada_hombre50, aes(linetype = "hombre de 50") ,col="green", lwd = 0.8) +
+  geom_function(fun = curva_ajustada_mujer64, aes(linetype = "mujer de 64") ,col="red", lwd = 0.5) +
+  geom_function(fun = curva_ajustada_hombre64, aes(linetype = "hombre de 64") ,col="green", lwd = 0.5) + theme_bw()
 ```
 
 
@@ -303,7 +303,7 @@ Consideraremos la base de datos ``Preg1B.csv`` con información sobre 295 pacien
 
 ### i) Explorando modelos con variable dependiente contínua. 
 
-Para presentar un modelo que parezca adecuado para modelar E(bpsystol; bmi, sex, age), exploramos una malla de los diferentes modelos lineales generalizados comúnmente usados: para el componente aleatorio cuando la variable dependiente es continua exploramos las distribuciones normal, gamma, e inversa gaussiana;  empleamos distintas funciones ligas tales como la inversa, identidad, logarítmica, y 1/mu^2(solo para IG); y consideramos el componente lineal tanto de potencias (-3, -2.5, ..., 2.5, 3) como de polinomios (grado 1 al 5). Consideramos por simplicidad que no hay interacción entre las covariables del modelo.  En el siguiente Cuadro se muestraa el mejor modelo, con el menor AIC de 2484.009 (que coincide con el mejor modelo por su BIC de 2502.443), con la siguiente estructura: 
+Para presentar un modelo que parezca adecuado para modelar E(bpsystol; bmi, sex, age), exploramos una malla de los diferentes modelos lineales generalizados comúnmente usados: para el componente aleatorio cuando la variable dependiente es continua exploramos las distribuciones normal, gamma, e inversa gaussiana;  empleamos distintas funciones ligas tales como la inversa, identidad, logarítmica, y 1/mu^2(solo para IG); y consideramos el componente lineal tanto de potencias (-3, -2.5, ..., 2.5, 3) como de polinomios (grado 1 al 5). Consideramos por simplicidad que no hay interacción entre las covariables del modelo.  En el siguiente Cuadro de MODELOS 1 se muestraa el mejor modelo en la columna (1), con el menor AIC de 2484.009 (que coincide con el mejor modelo por su BIC de 2502.443), con la siguiente estructura: 
 
 glm(formula = bpsystol ~ age+sex+I(bmi^(1.5)), family = inverse.gaussian(link = identity ), data = datos). 
 
@@ -422,7 +422,7 @@ FormList[[MinAIC]]
 
 
 
-Sin embargo, se elige el modelo más simple o parsimonioso sin el exponente de $1.5$ para la variable bmi, pues al considerar bmi sin modificación se obtiene un AIC  de 2484.1, el cual no parece ser muy diferente a 2484.009.  En el siguiente Cuadro se muestra el modelo final elegido. 
+Sin embargo, se elige el modelo más simple o parsimonioso sin el exponente de $1.5$ para la variable bmi, pues al considerar bmi sin modificación se obtiene un AIC  de 2484.1, el cual no parece ser muy diferente a 2484.009.  En el siguiente Cuadro de MODELOS 1, columna (2) se muestra el modelo final elegido. 
 
 glm(formula = bpsystol ~ age+sex+bmi, family = inverse.gaussian(link = identity ), data = datos).
 
@@ -441,7 +441,7 @@ modelo_glm1<-glm(formula = bpsystol ~ age+sex+bmi, family = inverse.gaussian(lin
 
 
 \begin{table}[!htbp] \centering 
-  \caption{} 
+  \caption{MODELOS 1} 
   \label{} 
 \footnotesize
 \begin{tabular}{@{\extracolsep{5pt}}lcc} 
@@ -538,7 +538,7 @@ plot(fit2res)
 
 ### ii) Asociación entre masa corporal y presión arterial sistólica, y estimación puntual. 
 
-En esta sección describiremos  la asociación entre masa corporal y presión arterial sistólica y la prueba de hipótesis de esta relación.  Dado que lo que buscamos responder es si tener un indice de masa corporal alto se relaciona con tener una presion sistolica alta agregaremos una prueba de hipótesis con dirección, donde la hipótesis nula es $H_0: \beta_4<0$ contra la alternativa $H_0: \beta_4>0$. El p-value asociado a la prueba es de Pr(>z) = 3.22e-09, por lo tanto, rechazamos la hipótesis nula y por lo tanto hay relación asociación entre la masa corporal alta y la presión arterial sistólica alta para una persona de cierta edad y sexo.  
+En esta sección describiremos  la asociación entre masa corporal y presión arterial sistólica y la prueba de hipótesis de esta relación.  Dado que lo que buscamos responder es si tener un indice de masa corporal alto se relaciona con tener una presion sistolica alta agregaremos una prueba de hipótesis con dirección, donde la hipótesis nula es $H_0: \beta_3\leq0$ contra la alternativa $H_0: \beta_3>0$. El p-value asociado a la prueba es de Pr(>z) = 3.22e-09, por lo tanto, rechazamos la hipótesis nula y por lo tanto hay relación asociación entre la masa corporal alta y la presión arterial sistólica alta para una persona de cierta edad y sexo.  
 
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
@@ -573,12 +573,12 @@ curva_ajustada_hombre64 <- function(x) {modelo_glm1$coefficients[1] + modelo_glm
 ```{r, echo=FALSE,message=FALSE,warning=FALSE, width = 6, fig.height = 3}
 ggplot(datos, aes(bmi, bpsystol)) +
   geom_point() +
-  geom_function(fun = curva_ajustada_mujer30, aes(linetype = "mujer de 30") ,col="skyblue", lwd = 1) +
-  geom_function(fun = curva_ajustada_hombre30, aes(linetype = "hombre de 30") ,col="green") +
-  geom_function(fun = curva_ajustada_mujer50, aes(linetype = "mujer de 50") ,col="darkblue", lwd = 0.8) +
-  geom_function(fun = curva_ajustada_hombre50, aes(linetype = "hombre de 50") ,col="darkgreen") +
+  geom_function(fun = curva_ajustada_mujer30, aes(linetype = "mujer de 30") ,col="red", lwd = 1) +
+  geom_function(fun = curva_ajustada_hombre30, aes(linetype = "hombre de 30") ,col="green", lwd = 1) +
+  geom_function(fun = curva_ajustada_mujer50, aes(linetype = "mujer de 50") ,col="red", lwd = 0.8) +
+  geom_function(fun = curva_ajustada_hombre50, aes(linetype = "hombre de 50") ,col="green", lwd = 0.8) +
   geom_function(fun = curva_ajustada_mujer64, aes(linetype = "mujer de 64") ,col="red") +
-  geom_function(fun = curva_ajustada_hombre64, aes(linetype = "hombre de 64") ,col="magenta") + theme_bw()
+  geom_function(fun = curva_ajustada_hombre64, aes(linetype = "hombre de 64") ,col="green") + theme_bw()
 ```
 
 
@@ -1113,17 +1113,23 @@ D_C<-exp(quad(a, b, c))
 
 
 
-Como se observa en la Gráfica anterior, el insecticida C es mejor, pues con menores dosis se tienen mayor probabilidad de muerte que A y B según el modelo probit. Además, como se mostró en el cuadro anterior, se encontró que la menor dósis mínima con la que el 70% se muere es para el insecticida C. A continuación mostramos una prueba de hipótesis que comprueba esto. Planteamos entonces que $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_3lnD+\beta_4(lnD)^2$ y    $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_1InsecticidaB +\beta_3lnD+\beta_4(lnD)^2$, de donde obtenemos la hipótesis nula $H_0: \beta_2InsecticidaC<0$ o $\beta_2InsecticidaC<\beta_1InsecticidaB$ y la hipótesis alternativa $H_a: \beta_2InsecticidaC > 0$ y $\beta_2InsecticidaC > \beta_1InsecticidaB$. 
+Como se observa en la Gráfica anterior, el insecticida C es mejor, pues con menores dosis se tienen mayor probabilidad de muerte que A y B según el modelo probit. Además, como se mostró en el cuadro anterior, se encontró que la menor dósis mínima con la que el 70% se muere es para el insecticida C. A continuación mostramos una prueba de hipótesis que comprueba esto. Planteamos entonces que $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_3lnD+\beta_4(lnD)^2$ y    $\beta_0+\beta_2InsecticidaC+\beta_3lnD+\beta_4(lnD)^2 > \beta_0+\beta_1InsecticidaB +\beta_3lnD+\beta_4(lnD)^2$, de donde obtenemos la hipótesis nula $H_0: \beta_2InsecticidaC<0$ y $\beta_2InsecticidaC<\beta_1InsecticidaB$ y la hipótesis alternativa $H_a: \beta_2InsecticidaC > 0$ o $\beta_2InsecticidaC > \beta_1InsecticidaB$. 
 
 
 
-```{r, echo=FALSE, include=FALSE}
+```{r, echo=FALSE}
 library(multcomp)
 K=matrix(c(0,0,1,0,0,
            0,-1,1,0,0), ncol=5, nrow=2, byrow=TRUE)
 m=c(0,0)
 summary(glht(fitprob_s, linfct=K, rhs=m, alternative="greater"), test=Chisqtest())
 ```
+
+
+
+
+
+
 
 Resultado: Chisq: $152.8355$ y p-value: $6.489137$e-34. Lo que rechaza la hipótesis nula, es decir no hay suficiente evidencia para asegurar que el insecticida C tenga menor efectividad que A y B.  
 
@@ -1132,7 +1138,7 @@ A continuación se muestra la prueba de hipótesis que muestra si A y B tienen u
 
 
 
-```{r, echo=FALSE, include=FALSE}
+```{r, echo=FALSE}
 library(multcomp)
 K=matrix(c(0,1,0,0,0), ncol=5, nrow=1, byrow=TRUE)
 m=c(0)
@@ -1479,9 +1485,7 @@ abline(h=110, col="blue")
 #exp(fitci3$confint)
 ```
 
-De los resultados obtenidos en la gráfica con los intervalos podemos ver que aproximadamente a partir de los 57-58 años de edad la incidencia de cáncer de pulmón en las ciudades de Dinamarca va en aumento,cosa que ya se podía observar en la gráfica presentada en el primer punto del ejercicio.
-
-Habiendo realizado todo el análisis, podemos decir que la edad juega un papel importante en el modelo y nos ayudó a ver de forma más clara y concisa que en efecto para las ciudades estudiadas por el equipo de investigadores en todas se incrementa la incidencia de cancer pulmonar conforme avanzan los años de edad.  
+OBSERVACIÓN: REVISAR Y MODIFICAR GRÁFICA, ASÍ COMO LAS CONCLUSIONES.
 
 
 

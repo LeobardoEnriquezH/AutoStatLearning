@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.12) (preloaded format=pdflatex 2023.1.15)  7 APR 2024 22:28
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.12) (preloaded format=pdflatex 2023.1.15)  11 APR 2024 20:24
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -907,27 +907,27 @@ f> <./GLMs_files/figure-latex/unnamed-chunk-8-4.pdf>]
 File: GLMs_files/figure-latex/unnamed-chunk-14-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-14-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-14-1.pdf  used o
-n input line 340.
+n input line 342.
 (pdftex.def)             Requested size: 433.63878pt x 216.81938pt.
 [5 <./GLMs_files/figure-latex/unnamed-chunk-14-1.pdf>] [6]
 <GLMs_files/figure-latex/unnamed-chunk-24-1.pdf, id=150, 433.62pt x 469.755pt>
 File: GLMs_files/figure-latex/unnamed-chunk-24-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-24-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-24-1.pdf  used o
-n input line 450.
+n input line 452.
 (pdftex.def)             Requested size: 433.61894pt x 469.75386pt.
 <GLMs_files/figure-latex/unnamed-chunk-25-1.pdf, id=151, 433.62pt x 289.08pt>
 File: GLMs_files/figure-latex/unnamed-chunk-25-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-25-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-25-1.pdf  used o
-n input line 455.
+n input line 457.
 (pdftex.def)             Requested size: 433.63878pt x 289.09251pt.
 [7 <./GLMs_files/figure-latex/unnamed-chunk-24-1.pdf>]
 <GLMs_files/figure-latex/unnamed-chunk-28-1.pdf, id=162, 433.62pt x 216.81pt>
 File: GLMs_files/figure-latex/unnamed-chunk-28-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-28-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-28-1.pdf  used o
-n input line 476.
+n input line 478.
 (pdftex.def)             Requested size: 433.63878pt x 216.81938pt.
 [8 <./GLMs_files/figure-latex/unnamed-chunk-25-1.pdf> <./GLMs_files/figure-late
 x/unnamed-chunk-28-1.pdf>] [9]
@@ -935,20 +935,20 @@ x/unnamed-chunk-28-1.pdf>] [9]
 File: GLMs_files/figure-latex/unnamed-chunk-33-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-33-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-33-1.pdf  used o
-n input line 580.
+n input line 582.
 (pdftex.def)             Requested size: 433.61894pt x 180.67455pt.
 [10 <./GLMs_files/figure-latex/unnamed-chunk-33-1.pdf>] [11] [12]
 <GLMs_files/figure-latex/unnamed-chunk-48-1.pdf, id=208, 578.16pt x 289.08pt>
 File: GLMs_files/figure-latex/unnamed-chunk-48-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-48-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-48-1.pdf  used o
-n input line 750.
+n input line 752.
 (pdftex.def)             Requested size: 469.75385pt x 234.8769pt.
 <GLMs_files/figure-latex/unnamed-chunk-52-1.pdf, id=209, 433.62pt x 180.675pt>
 File: GLMs_files/figure-latex/unnamed-chunk-52-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-52-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-52-1.pdf  used o
-n input line 770.
+n input line 772.
 (pdftex.def)             Requested size: 433.61894pt x 180.67455pt.
 [13 <./GLMs_files/figure-latex/unnamed-chunk-48-1.pdf> <./GLMs_files/figure-lat
 ex/unnamed-chunk-52-1.pdf>] [14]
@@ -956,23 +956,23 @@ ex/unnamed-chunk-52-1.pdf>] [14]
 File: GLMs_files/figure-latex/unnamed-chunk-62-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-62-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-62-1.pdf  used o
-n input line 852.
+n input line 881.
 (pdftex.def)             Requested size: 433.62555pt x 252.94823pt.
 
-LaTeX Warning: Float too large for page by 37.5681pt on input line 957.
+LaTeX Warning: Float too large for page by 37.5681pt on input line 986.
 
 <GLMs_files/figure-latex/unnamed-chunk-69-1.pdf, id=236, 433.62pt x 252.945pt>
 File: GLMs_files/figure-latex/unnamed-chunk-69-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-69-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-69-1.pdf  used o
-n input line 965.
+n input line 994.
 (pdftex.def)             Requested size: 433.62555pt x 252.94823pt.
 [15 <./GLMs_files/figure-latex/unnamed-chunk-62-1.pdf>] [16]
 <GLMs_files/figure-latex/unnamed-chunk-79-1.pdf, id=251, 433.62pt x 252.945pt>
 File: GLMs_files/figure-latex/unnamed-chunk-79-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-79-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-79-1.pdf  used o
-n input line 1057.
+n input line 1086.
 (pdftex.def)             Requested size: 433.62555pt x 252.94823pt.
 [17 <./GLMs_files/figure-latex/unnamed-chunk-69-1.pdf>] [18 <./GLMs_files/figur
 e-latex/unnamed-chunk-79-1.pdf>]
@@ -980,10 +980,10 @@ e-latex/unnamed-chunk-79-1.pdf>]
 File: GLMs_files/figure-latex/unnamed-chunk-82-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-82-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-82-1.pdf  used o
-n input line 1107.
+n input line 1126.
 (pdftex.def)             Requested size: 433.63878pt x 289.09251pt.
 LaTeX Font Info:    Trying to load font information for TS1+lmtt on input line 
-1119.
+1138.
 (C:\Users\Leobardo\AppData\Local\Programs\MiKTeX\tex/latex/lm\ts1lmtt.fd
 File: ts1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 ) [19 <./GLMs_files/figure-latex/unnamed-chunk-82-1.pdf>] [20] [21]
@@ -991,7 +991,7 @@ File: ts1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 File: GLMs_files/figure-latex/unnamed-chunk-98-1.pdf Graphic file (type pdf)
 <use GLMs_files/figure-latex/unnamed-chunk-98-1.pdf>
 Package pdftex.def Info: GLMs_files/figure-latex/unnamed-chunk-98-1.pdf  used o
-n input line 1287.
+n input line 1306.
 (pdftex.def)             Requested size: 433.61894pt x 361.34912pt.
 [22 <./GLMs_files/figure-latex/unnamed-chunk-98-1.pdf>] (GLMs.aux
 LaTeX Info: Redefining \. on input line 23.
@@ -1002,11 +1002,11 @@ LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 18241 strings out of 476406
- 306352 string characters out of 2788151
+ 18239 strings out of 476406
+ 306332 string characters out of 2788151
  1894787 words of memory out of 3000000
  38024 multiletter control sequences out of 15000+600000
- 588416 words of font info for 163 fonts, out of 8000000 for 9000
+ 588333 words of font info for 162 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  74i,12n,81p,1087b,671s stack positions out of 10000i,1000n,20000p,200000b,80000s
 {C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ts1.en
@@ -1033,7 +1033,7 @@ MiKTeX/fonts/type1/public/lm/lmsy6.pfb><C:/Users/Leobardo/AppData/Local/Program
 s/MiKTeX/fonts/type1/public/lm/lmsy7.pfb><C:/Users/Leobardo/AppData/Local/Progr
 ams/MiKTeX/fonts/type1/public/lm/lmsy8.pfb><C:/Users/Leobardo/AppData/Local/Pro
 grams/MiKTeX/fonts/type1/public/lm/lmtt10.pfb>
-Output written on GLMs.pdf (23 pages, 995552 bytes).
+Output written on GLMs.pdf (23 pages, 996163 bytes).
 PDF statistics:
  476 PDF objects out of 1000 (max. 8388607)
  58 named destinations out of 1000 (max. 500000)
