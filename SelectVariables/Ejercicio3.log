@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.12) (preloaded format=pdflatex 2023.1.15)  8 MAY 2024 15:58
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.12) (preloaded format=pdflatex 2023.1.15)  9 MAY 2024 16:33
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -580,37 +580,37 @@ LaTeX Info: Redefining \. on input line 79.
 LaTeX Info: Redefining \% on input line 79.
 Package hyperref Info: Link coloring ON on input line 79.
 LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 8
-9.
+5.
 (C:\Users\Leobardo\AppData\Local\Programs\MiKTeX\tex/latex/lm\t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 9
-0.
+1.
 (C:\Users\Leobardo\AppData\Local\Programs\MiKTeX\tex/latex/lm\ot1lmr.fd
 File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OML+lmm on input line 9
-0.
+1.
 (C:\Users\Leobardo\AppData\Local\Programs\MiKTeX\tex/latex/lm\omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 
-90.
+91.
 (C:\Users\Leobardo\AppData\Local\Programs\MiKTeX\tex/latex/lm\omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 
-90.
+91.
 (C:\Users\Leobardo\AppData\Local\Programs\MiKTeX\tex/latex/lm\omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 90.
+(Font)              <10> on input line 91.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 90.
+(Font)              <7> on input line 91.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 90.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 90.
+(Font)              <5> on input line 91.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 91.
 
 (C:\Users\Leobardo\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
@@ -618,7 +618,7 @@ File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 (C:\Users\Leobardo\AppData\Local\Programs\MiKTeX\tex/latex/microtype\mt-msa.cfg
 File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 90.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 91.
 
 (C:\Users\Leobardo\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
@@ -630,7 +630,7 @@ File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 File: Ejercicio3_files/figure-latex/Grafica13-1.pdf Graphic file (type pdf)
 <use Ejercicio3_files/figure-latex/Grafica13-1.pdf>
 Package pdftex.def Info: Ejercicio3_files/figure-latex/Grafica13-1.pdf  used on
- input line 101.
+ input line 113.
 (pdftex.def)             Requested size: 500.49298pt x 264.14906pt.
 [1
 
@@ -640,25 +640,25 @@ io3_files/figure-latex/Grafica13-1.pdf>]
 File: Ejercicio3_files/figure-latex/Grafica23-1.pdf Graphic file (type pdf)
 <use Ejercicio3_files/figure-latex/Grafica23-1.pdf>
 Package pdftex.def Info: Ejercicio3_files/figure-latex/Grafica23-1.pdf  used on
- input line 150.
+ input line 183.
 (pdftex.def)             Requested size: 469.75386pt x 252.94438pt.
 
-LaTeX Warning: Command \' invalid in math mode on input line 158.
+LaTeX Warning: Command \' invalid in math mode on input line 191.
 
 <Ejercicio3_files/figure-latex/Grafica33-1.pdf, id=23, 325.215pt x 289.08pt>
 File: Ejercicio3_files/figure-latex/Grafica33-1.pdf Graphic file (type pdf)
 <use Ejercicio3_files/figure-latex/Grafica33-1.pdf>
 Package pdftex.def Info: Ejercicio3_files/figure-latex/Grafica33-1.pdf  used on
- input line 163.
+ input line 196.
 (pdftex.def)             Requested size: 325.22908pt x 289.09251pt.
 <Ejercicio3_files/figure-latex/Grafica33-2.pdf, id=24, 325.215pt x 289.08pt>
 File: Ejercicio3_files/figure-latex/Grafica33-2.pdf Graphic file (type pdf)
 <use Ejercicio3_files/figure-latex/Grafica33-2.pdf>
 Package pdftex.def Info: Ejercicio3_files/figure-latex/Grafica33-2.pdf  used on
- input line 164.
+ input line 197.
 (pdftex.def)             Requested size: 325.22908pt x 289.09251pt.
 
-Overfull \hbox (152.19638pt too wide) in paragraph at lines 163--175
+Overfull \hbox (152.19638pt too wide) in paragraph at lines 196--208
 [][] []
  []
 
@@ -668,18 +668,18 @@ gure-latex/Grafica33-1.pdf> <./Ejercicio3_files/figure-latex/Grafica33-2.pdf>]
 File: Ejercicio3_files/figure-latex/Grafica43-1.pdf Graphic file (type pdf)
 <use Ejercicio3_files/figure-latex/Grafica43-1.pdf>
 Package pdftex.def Info: Ejercicio3_files/figure-latex/Grafica43-1.pdf  used on
- input line 191.
+ input line 224.
 (pdftex.def)             Requested size: 469.75386pt x 325.2142pt.
 [4 <./Ejercicio3_files/figure-latex/Grafica43-1.pdf>] (Ejercicio3.aux
 LaTeX Info: Redefining \. on input line 24.
 LaTeX Info: Redefining \% on input line 24.
 ) ) 
 Here is how much of TeX's memory you used:
- 15187 strings out of 476406
- 247522 string characters out of 2788151
- 1860787 words of memory out of 3000000
+ 15201 strings out of 476406
+ 247664 string characters out of 2788151
+ 1861787 words of memory out of 3000000
  35241 multiletter control sequences out of 15000+600000
- 536931 words of font info for 81 fonts, out of 8000000 for 9000
+ 537512 words of font info for 88 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  74i,6n,81p,1009b,459s stack positions out of 10000i,1000n,20000p,200000b,80000s
 {C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-maths
@@ -692,7 +692,7 @@ m/lmmi10.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/type1/publi
 c/lm/lmr10.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/type1/pub
 lic/lm/lmsy10.pfb><C:/Users/Leobardo/AppData/Local/Programs/MiKTeX/fonts/type1/
 public/lm/lmtt10.pfb>
-Output written on Ejercicio3.pdf (4 pages, 142953 bytes).
+Output written on Ejercicio3.pdf (4 pages, 147537 bytes).
 PDF statistics:
  100 PDF objects out of 1000 (max. 8388607)
  9 named destinations out of 1000 (max. 500000)
