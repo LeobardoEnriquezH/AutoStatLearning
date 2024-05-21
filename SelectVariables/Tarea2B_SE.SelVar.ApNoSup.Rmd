@@ -1,0 +1,1353 @@
+---
+title: ""
+date: ""
+header-includes:
+- \usepackage[utf8]{inputenc}
+- \usepackage[spanish]{babel}
+- \usepackage{graphicx}
+- \usepackage{multirow,rotating}
+- \pagenumbering{gobble}
+- \usepackage{dcolumn}
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    includes:
+      in_header: labels.tex
+      before_body: cover.tex
+csl: apa.csl
+bibliography: fuentes1.bib
+---
+```{=tex}
+\pagenumbering{gobble}
+\pagenumbering{arabic}
+```
+
+```{r setup, include=FALSE }
+knitr::opts_chunk$set(echo = T, fig.width = 6, fig.height = 3.5)
+```
+
+```{r, message=FALSE, include=FALSE,warning=FALSE, background=FALSE, comment=FALSE, engine.path=FALSE, cache=FALSE, out.extra=FALSE, results='hide'}
+#rm(list = ls())
+pacman::p_load(tidyverse,ISLR,forcats,broom,factoextra,gridExtra,psych,car,nortest,
+               kableExtra,data.table,NbClust,cowplot,clValid,factorextra,leaps,
+               stargazer,knitr,viridis,dplyr,readr,scales,quantmod,texreg,tinytex, 
+               tidyr, imager,lubridate,tseries, astsa, growthrates, tis, dynlm, 
+               readxl, foreign, hrbthemes, gtsummary, corrplot, lm.beta, ggfortify,
+               AER, lmtest, sandwich,GGally, ggplot2, multcomp, purrr, VGAM, lessR,
+               flextable, performance, see,qqplotr, ggrepel, patchwork,boot,rempsyc,
+               report, ggResidpanel,DHARMa, SuppDists, glmnet)
+```
+
+
+\section{1. Monte Carlo y Bootstrap no paramétrico}
+
+
+Sea una muestra aleatoria $X_1,...,X_n$ de una población con distribución $Poisson(\theta)$. Se puede mostrar que la estimación de la función parametral de $\tau(\theta)=e^{-\theta}=P(X=0)$ es $\hat{\tau}(\theta)=(\frac{n-1}{n})^{\sum_{i=1}^nX_i}$ y que es su UMVUE, sin embargo no es fácil encontrar la distribución de $\hat{\tau}(\theta)$ o la expresión de su varianza $V(\hat{\tau}(\theta))$. 
+
+
+```{r AmbienteDeTrabajo, include = FALSE}
+set.seed(340) #No. de cuenta que termina en 340
+library(ggplot2)
+```
+
+\subsection{\textbf{a.} Método Monte Carlo}
+
+Para estimar $E(\hat{\tau}(\theta))$, $V(\hat{\tau}(\theta))$ y el histograma de $\hat{\tau}_1,...,\hat{\tau}_B$ como datos de la distribución de $\hat{\tau}(\theta)$, se generan diez mil muestras, cada muestra tiene 20 observaciones, de la variable aleatoria $\displaystyle\widehat{\tau} \sim \text{Poisson}(\theta = 1)$.
+
+
+```{r estimation, include = FALSE}
+# Generación de muestras para el estimador de tau, se almacena en un solo dataframe.
+
+mc_tau = c()
+
+for (i in 1:10000){
+  mc_tau_i = (19/20)^(sum(rpois(20, lambda = 1)))
+  mc_tau = c(mc_tau, mc_tau_i)
+}
+
+mc_tau_df = data.frame(mc_tau)
+mc_tau_df$sq_mc_tau_df = mc_tau_df$mc_tau^2
+
+# Esperanza y varianza. Obtenemos la esperanza de acuerdo a la fórmula proporcionada.
+
+mc_expec_tau = sum(mc_tau)/10000
+
+mc_var_tau = sum(mc_tau_df$sq_mc_tau_df)/10000 - mc_expec_tau^2
+
+print(max(mc_tau))
+print(mc_expec_tau)
+print(mc_var_tau)
+```
+
+De este modo, al estimar $E(\widehat{\tau})$, $V(\widehat{\tau})$ y la distribución de $\hat{\tau}$ se obtienen los siguientes resultados (los códigos se pueden consultar en el archivo RMarkdown en los chunks \textit{estamationT} y \textit{histogram1} en las lineas 50 y 83 respectivamente). 
+
+\begin{align*}
+  \mathbb{E}\left[\widehat{\tau}\right]&\approx\frac{\sum_{i=1}^{10000}\widehat{\tau}_i}{10000} \approx `r format(round(mc_expec_tau, digits = 7), nsmall = 7)` & & y & \mathbb{V}\left[\widehat{\tau}\right] &= \mathbb{E}\left[\widehat{\tau}^2\right]-\mathbb{E}\left[\widehat{\tau}\right]^2 \approx `r format(round(mc_var_tau, digits = 7), nsmall = 7)`\\
+\end{align*}
+
+ 
+
+```{r histogram1, echo = FALSE, warning = FALSE, fig.cap = 'Histograma para las muestras generadas por Monte Carlo',fig.width=6, fig.align = 'center'}
+# Histograma para tau obtenido por el método de Monte Carlo.
+ggplot(mc_tau_df, aes(x = mc_tau)) +
+  geom_histogram(color = 'black', fill = 'blue', aes(y = (..count..)/sum(..count..)), bins = 30) +
+  labs(
+    title = ' ',
+    x = expression(widehat(tau)),
+    y = 'Frecuencia relativa',
+  ) +
+  scale_x_continuous(breaks = seq(0, max(mc_tau), 0.04)) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 8)) 
+```
+
+
+\subsection{\textbf{b.} \textit{Bootstrap} no paramétrico}
+
+Para el método de \textit{bootstrap} no paramétrico, se generan 20 números aleatorios de una distribución Poisson($\theta=1$). Hacemos la estimación de $\tau(\theta)=e^{-\theta}=P(X=0)$ usando $\hat{\tau}(\theta)=(\frac{n-1}{n})^{\sum_{i=1}^nX_i}$, estimamos la esperanza y varianza de $\hat{\tau}$ usando bootstrap no paramétrico con $B=10,000$, y el histograma de $\hat{\tau}^*_{(1)},...,\hat{\tau}^*_{(n)}$. 
+
+
+```{r Bootstrap, include=FALSE}
+# Generación de muestras Poisson y almacenado en un dataframe.
+b_tau = rpois(20, lambda = 1)
+b_tau_df = data.frame(b_tau)
+#View(b_tau_df)
+
+# Definimos una función para obtener el parámetro buscado.
+estadistica_tau = function(data, index){
+  new_data = data[c(index)]
+  tau_param = (19/20)^(sum(new_data))
+  return(tau_param)
+}
+
+# Bootstrap con lo definido previamente.
+bstrap = boot::boot(data = b_tau, R = 10000, statistic = estadistica_tau)
+
+bstrapt0<-bstrap$t0
+print(bstrapt0)
+varbstrapt<-var(bstrap$t)
+print(varbstrapt)
+
+# Dataframe auxiliar para la gráfica.
+b_tau_g_df = data.frame(bstrap$t)
+```
+
+
+Se obtuvieron los siguientes resultados (el código se puede consultar en el chunk \textit{Bootstrap} en la línea 103 y 139 del archivo RMarkdown).  
+
+
+
+\begin{align*}
+  \mathbb{E}\left[\widehat{\tau}\right] &\approx `r bstrapt0`  & \mathbb{V}\left[\widehat{\tau}\right] &\approx  `r varbstrapt`
+\end{align*}
+ 
+ 
+
+```{r SegundoHistograma, echo = FALSE, warning = FALSE, fig.cap = 'Histograma para las muestras generadas por \\textit{bootstrapping}', out.width = '75%', fig.align = 'center'}
+# Histograma para tau de bootstrap.
+ggplot(b_tau_g_df, aes(x = bstrap.t)) +
+  geom_histogram(color = 'black', fill = '#880808', aes(y = (..count..)/sum(..count..)), bins = 30) +
+  labs(
+    title = ' ',
+    x = expression(widehat(tau)),
+    y = 'Porcentaje',
+  ) +
+  scale_x_continuous(breaks = seq(0, max(b_tau_g_df), 0.04)) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 8)) 
+```
+
+
+
+```{r, echo=FALSE}
+dif_e<-round(mc_expec_tau-bstrapt0, digits = 6)
+dif_v<-round(mc_var_tau-varbstrapt, digits = 6)
+dif_vv<-dif_v[1]
+```
+
+
+Los métodos difirieron en aproximadamente `r dif_e` para la esperanza del estimador y `r dif_vv` para su varianza. Los histogramas representan distribuciones muy parecidas.  
+
+
+
+
+
+
+
+\section{2. Selección de variables.}
+
+Nos interesa es usar las variables clínicas observadas en pacientes de la base de datos ``fat`` del paquete ``faraway`` para estudiar cuales son los factores que ayudan a modelar mejor el promedio del porcentaje de grasa corporal en Hombres (brozek). Omitiremos las variables siri, density y free, se eliminaron los valores nulos de la variable brozek, y los outliers de weight y height. Esto último se puede apreciar en la siguiente Gráfica.  
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE, fig.width=7, fig.height=2.5}
+#comenzamos cargando los datos que vamos a usar y los guardamos en una variable 
+data <- faraway::fat
+#ya que tenemos los datos vamos a eliminar las variables siri, density y free, ademas vamos a eliminar los valores "raros" de las variables height y weight, asi como valores cero en la variable brozek.
+fat <- subset(data, select = -c(siri, density, free))
+#graficos de boxplot para ver identificar outliers y eliminarlos 
+
+par(mfrow = c(1, 4))
+boxplot(fat$weight, # Datos
+        horizontal = FALSE, # Horizontal o vertical
+        lwd = 2, # Lines width
+        col = rgb(1, 0, 0, alpha = 0.4), # Color
+        xlab = "Weight",  # Etiqueta eje X
+        ylab = "Values",  # Etiqueta eje Y
+        main = "Boxplot Weight", # Título
+        notch = TRUE, # Añade intervalos de confianza para la mediana
+        border = "black",  # Color del borde del boxplot
+        outpch = 25,       # Símbolo para los outliers
+        outbg = "red",   # Color de los datos atípicos
+        whiskcol = "blue", # Color de los bigotes
+        whisklty = 2,      # Tipo de línea para los bigotes
+        lty = 1)# Tipo de línea (caja y mediana)
+
+#legend("topright", legend = "Weight", # Posición y título
+    #fill = rgb(1, 0, 0, alpha = 0.4),  # Color
+    #inset = c(0.03, 0.05), # Cambiamos los márgenes
+    #bg = "white")
+
+boxplot(fat$height, # Datos
+        horizontal = FALSE, # Horizontal o vertical
+        lwd = 2, # Lines width
+        col = rgb(1, 0, 0, alpha = 0.4), # Color
+        xlab = "Height",  # Etiqueta eje X
+        ylab = "Values",  # Etiqueta eje Y
+        main = "Boxplot Height", # Título
+        notch = TRUE, # Añade intervalos de confianza para la mediana
+        border = "black",  # Color del borde del boxplot
+        outpch = 25,       # Símbolo para los outliers
+        outbg = "red",   # Color de los datos atípicos
+        whiskcol = "blue", # Color de los bigotes
+        whisklty = 2,      # Tipo de línea para los bigotes
+        lty = 1)
+
+
+#legend("topright", legend = "Height", # Posición y título
+    #fill = rgb(1, 0, 0, alpha = 0.4),  # Color
+    #inset = c(0.03, 0.05), # Cambiamos los márgenes
+    #bg = "white")
+#de los boxplot tenemos identificados valores atipicos para la variable Weight por encima de 250 por lo que se quitaran esos valores, en el caso de la variable Height tenemos un valor por debajo de 60 por lo que tambien removeremos ese valor de las variables y de una vez se quitaran los ceros de la variable brozek
+
+fat <- fat[fat$weight <= 250, ]
+fat <- fat[fat$height >= 60, ]
+fat <- fat[fat$brozek != 0, ]
+
+
+boxplot(fat$weight, # Datos
+        horizontal = FALSE, # Horizontal o vertical
+        lwd = 2, # Lines width
+        col = rgb(1, 0, 0, alpha = 0.4), # Color
+        xlab = "Weight",  # Etiqueta eje X
+        ylab = "Values",  # Etiqueta eje Y
+        main = "Boxplot Weight", # Título
+        notch = TRUE, # Añade intervalos de confianza para la mediana
+        border = "black",  # Color del borde del boxplot
+        outpch = 25,       # Símbolo para los outliers
+        outbg = "red",   # Color de los datos atípicos
+        whiskcol = "blue", # Color de los bigotes
+        whisklty = 2,      # Tipo de línea para los bigotes
+        lty = 1)# Tipo de línea (caja y mediana)
+
+#legend("topright", legend = "Weight", # Posición y título
+    #fill = rgb(1, 0, 0, alpha = 0.4),  # Color
+    #inset = c(0.03, 0.05), # Cambiamos los márgenes
+    #bg = "white")
+
+boxplot(fat$height, # Datos
+        horizontal = FALSE, # Horizontal o vertical
+        lwd = 2, # Lines width
+        col = rgb(1, 0, 0, alpha = 0.4), # Color
+        xlab = "Height",  # Etiqueta eje X
+        ylab = "Values",  # Etiqueta eje Y
+        main = "Boxplot Height", # Título
+        notch = TRUE, # Añade intervalos de confianza para la mediana
+        border = "black",  # Color del borde del boxplot
+        outpch = 25,       # Símbolo para los outliers
+        outbg = "red",   # Color de los datos atípicos
+        whiskcol = "blue", # Color de los bigotes
+        whisklty = 2,      # Tipo de línea para los bigotes
+        lty = 1)
+
+
+#legend("topright", legend = "Height", # Posición y título
+    #fill = rgb(1, 0, 0, alpha = 0.4),  # Color
+    #inset = c(0.03, 0.05), # Cambiamos los márgenes
+    #bg = "white")
+
+#ya no tenemos outliers en las variables.
+
+```
+
+Con el pre procesamiento realizado lo que sigue es crear subconjuntos de modelos para datos continuos con liga identidad y distribución Gaussiana, además de hacer selección de variables considerando efectos principales usando el mejor subconjunto, un método stepwise y lasso, con el criterio BIC para el mejor modelo. Además se sonsiderarán los subconjuntos con interacciones, términos cuadráticos para las variables, etc.  
+
+```{r fitBestSubset,echo=FALSE,message=FALSE,warning=FALSE}
+#seleccion del subconjunto de variables
+best_subset <- regsubsets(brozek ~ age + weight + height + adipos + neck
+                                + chest + abdom + hip + thigh + knee + ankle +
+                                  biceps + forearm + wrist, data = fat,
+                                method = "exhaustive", nvmax = 14)
+#coef(best_subset, 1)
+#coef(best_subset, 2)
+coef(best_subset, 3)
+#coef(best_subset, 4)
+#coef(best_subset, 5)
+#coef(best_subset, 6)
+#coef(best_subset, 7)
+#coef(best_subset, 8)
+#coef(best_subset, 9)
+#coef(best_subset, 10)
+
+### Ajuste con las covariables que entran al modelo bajo la seleccion del mejor subconjunto
+#fitBestSubset1 <- lm(formula = brozek ~ abdom, data = fat)
+#fitBestSubset2 <- lm(formula = brozek ~ weight + abdom, data = fat)
+fitBestSubset3 <- lm(formula = brozek ~ height + abdom  + wrist, data = fat)
+#fitBestSubset4 <- lm(formula = brozek ~ age + height + abdom + wrist, data = fat)
+#fitBestSubset5 <- lm(formula = brozek ~ age + height + chest + abdom  + wrist, data = fat)
+#fitBestSubset6 <- lm(formula = brozek ~  age + height + chest + abdom + forearm + wrist, data = fat)
+#fitBestSubset7 <- lm(formula = brozek ~  age + height + neck + chest + abdom + forearm + wrist, data = fat)
+#fitBestSubset8 <- lm(formula = brozek ~  age + height + neck + chest + abdom + biceps + forearm + wrist, data = fat)
+#fitBestSubset9 <- lm(formula = brozek ~  age+ adipos + neck + chest + abdom + hip + thigh + forearm + wrist, data = fat)
+#fitBestSubset10 <- lm(formula = brozek ~  age + weight + adipos + neck + chest + abdom + hip + thigh + forearm + wrist, data = fat)
+#summary(fitBestSubset)
+
+#BIC(fitBestSubset1)
+#BIC(fitBestSubset2)
+#BIC(fitBestSubset3)
+#BIC(fitBestSubset4)
+#BIC(fitBestSubset5)
+#BIC(fitBestSubset6)
+#BIC(fitBestSubset7)
+#BIC(fitBestSubset8)
+#BIC(fitBestSubset9)
+#BIC(fitBestSubset10)
+
+BIC_fitBestSubset3<-BIC(fitBestSubset3)
+sprintf("BIC: %f", BIC_fitBestSubset3)
+```
+
+En un primer subconjunto de ajuste (``fitBestSubset``) con la función ``regsubsets`` se hizo una selección de las mejores combinaciones de variables de las 14, el mejor resultado fue la combinación de tres variables height, abdom, wrist, con las cuales se obtuvo un menor BIC de `r BIC_fitBestSubset3`. (Chunk fitBestSubset, linea 150) 
+
+
+```{r modeloforward,echo=FALSE,message=FALSE,warning=FALSE}
+#Ajuste de modelo stepwise
+fit_forward <- regsubsets(brozek ~ .,data = fat,method = "forward",nvmax = 14)
+#plot(fit_forward, scale = "bic")
+coef(fit_forward, 3) #variables seleccionadas del metodo forward
+modelo_forward <- lm(formula = brozek ~ weight + abdom + wrist,
+                     data = fat)
+#summary(modelo_forward)
+BIC_modelo_forward<-BIC(modelo_forward)
+sprintf("BIC: %f", BIC_modelo_forward)
+```
+
+En el segundo subconjunto ``modeloforward`` con el ajuste del modelo stepwise(forward) se obtuvo un BIC de `r BIC_modelo_forward`el cual es muy parecido pero ligeramente mayor al obtenido con el del primer ajuste realizado con la seleccion de variables.(Chunk modeloforward, linea 198) 
+
+```{r modelobackward,echo=FALSE,message=FALSE,warning=FALSE}
+#ademas del ajuste forward que se hizo se mostrara el resultado de aplicar un metodo backward
+fit_backward <- regsubsets(brozek ~ .,
+                              data = fat,
+                              method = "backward",
+                              nvmax = 14)
+#plot(fit_backward, scale = "bic")
+#Obtenemos las variables con las que debemos trabajar 
+coef(fit_backward, 3)
+
+### Ajuste con las covariables que entran al modelo bajo la seleccion backward
+modelo_backward <- lm(formula = brozek ~ age + abdom + wrist,
+                      data = fat)
+#summary(modelo_backward)
+
+### ComparaciÃ³n de BIC.
+BIC_modelo_backward<-BIC(modelo_backward)
+sprintf("BIC: %f", BIC_modelo_backward)
+```
+
+En el tercer subconjunto ``modelobackward`` con el ajuste Backward obtuvimos un BIC  de `r BIC_modelo_backward` el cual comparado con los dos anteriores BIC resulta mas alto.(Chunk modelobackward, linea 212) 
+
+
+```{r AjusteModeloLasso,echo=FALSE,message=FALSE,warning=FALSE}
+#modelo con metodo lasso
+
+# Creamos la matriz de diseño X y la variable de respuesta y
+X <- model.matrix(object = brozek ~ ., data = fat)
+Y <- fat$brozek
+
+datos <- cbind(X, Y) #combinamos ambas variables en un conjunto de datos
+
+bd <- as.data.frame(datos)
+
+# Eliminamos el intercepto 
+bd_int_less <- bd[, -1]
+
+metodo_lasso <- glmnet(X,Y, family = gaussian(link = "identity"), nlambda = 100)
+
+Lista_modelos <- list()
+Lista_BIC <- list()
+final <- length(metodo_lasso$lambda)
+print(final)
+
+for (i in 1:final) {
+  coeficientes <- coef(metodo_lasso)[, i] != 0
+  matriz_variables_X <- X[, coeficientes[-1]] # Excluir el intercepto
+  
+  # Ajustar el modelo con las variables seleccionadas por la penalizacion Lasso
+  ajuste_lasso <- glm(formula = Y ~ ., family = gaussian(link = "identity"), data = data.frame(matriz_variables_X, Y))
+  
+  Lista_modelos[[i]] <- ajuste_lasso
+  Lista_BIC[[i]] <- BIC(ajuste_lasso)
+}
+
+# Se busca el indice del modelo con el minimo BIC, usamos la funcion unlist para deshacer la lista
+min_bic_indice <- which.min(unlist(Lista_BIC))
+
+# Se obtiene el modelo optimo y sus coeficientes
+modelo_seleccionado <- Lista_modelos[[min_bic_indice]]
+coeficientes <- coefficients(modelo_seleccionado)
+
+# Se imprimen los coeficientes del modelo optimo y su BIC
+print(coeficientes)
+
+Ajuste_ModeloLasso <- lm(formula = brozek ~ age + height + abdom + wrist, data = fat)
+  
+#print(BIC(modelo_seleccionado))
+BIC_Ajuste_ModeloLasso<-BIC(Ajuste_ModeloLasso)
+sprintf("BIC: %f", BIC_Ajuste_ModeloLasso)
+#summary 
+#summary(modelo_seleccionado)
+#summary(Ajuste_ModeloLasso)
+```
+El cuarto subconjunto de modelos ``AjusteModeloLasso``, corresponde  al modelo lasso, donde se obtuvo un BIC de `r BIC_Ajuste_ModeloLasso`. (Chunk AjusteModeloLasso, linea 235) 
+
+Con los métodos anteriormente realizados obtuvimos BIC muy similares entre si por lo que escoger uno como mejor modelo seria usar el mas parsimonioso, es decir, que resulte fácil de construirse y de interpretarse.
+
+Ahora ajustaremos modelos parecidos a los anteriormente realizados con la diferencia de que incluiremos **interacciones** para ver si mejoran los modelos. 
+
+```{r Ajusteforward2,echo=FALSE,message=FALSE,warning=FALSE}
+
+forward_interacciones <- regsubsets(brozek ~ . ^2,
+                              data = fat,
+                              method = "forward",
+                              nvmax = 14)
+
+#Usando la siguiente grÃ¡fica encontramos 4 valores
+#plot(forward_interacciones, scale = "bic")
+
+#Obtenemos las variables con las que debemos trabajar 
+coef(forward_interacciones, 3)
+
+### Ajuste con las covariables que entran al modelo bajo la selecciÃ³n backward
+Ajuste_forward2 <- lm(formula = brozek ~ abdom + height:wrist + chest:hip,
+                      data = fat)
+#summary(Ajuste_forward2)
+
+### ComparaciÃ³n de BIC.
+
+BIC_Ajuste_forward2<-BIC(Ajuste_forward2)
+sprintf("BIC: %f", BIC_Ajuste_forward2)
+```
+
+Para el quinto subconjunto ``Ajusteforward2``, el resultado del forward con interacciones muestra un BIC de `r BIC_Ajuste_forward2`.(Chunk Ajusteforward2, linea 292) 
+
+```{r Ajustebackward2,echo=FALSE,message=FALSE,warning=FALSE}
+
+Metodo_backward_interacciones <- regsubsets(brozek ~ . ^2,
+                              data = fat,
+                              method = "backward",
+                              nvmax = 14)
+
+#Usando la siguiente grÃ¡fica encontramos 4 valores
+#plot(Metodo_backward_interacciones, scale = "bic")
+
+#Obtenemos las variables con las que debemos trabajar 
+coef(Metodo_backward_interacciones, 4)
+
+### Ajuste con las covariables que entran al modelo bajo la selecciÃ³n backward
+Ajuste_backward2 <- lm(formula = brozek ~ hip + height:hip + neck:abdom + neck:hip,
+                      data = fat)
+#summary(Ajuste_backward2)
+
+### ComparaciÃ³n de BIC.
+BIC_Ajuste_backward2<-BIC(Ajuste_backward2)
+sprintf("BIC: %f", BIC_Ajuste_backward2)
+```
+Para el sexto subconjunto ``Ajustebackward2``, el resultado del backward con interacciones muestra un BIC de `r BIC_Ajuste_backward2`. (Chunk Ajustebackward2, linea 318) 
+
+
+
+
+```{r AjusteLassoInteracciones,echo=FALSE,message=FALSE,warning=FALSE}
+
+#Matriz diseño considerando interacciones 
+X2 <- model.matrix(object = brozek ~ .^2, data = fat)
+
+#Le quitamos el intercepto 
+X2_aux <- X2[,-1]
+
+
+#Variable y 
+y <- fat$brozek
+
+#Realizamos la penalizacion lasso 
+lasso_inter <- glmnet(X2_aux, y, family <- gaussian(link = "identity"), nlambda = 100)
+
+#Para eso, los coeficientes los vamos a utilizar, y buscaremos los 
+#coeficientes que no son 0 en cada iteraciÃ³n, y lo haremos un dataframe
+coeficientes2 <- data.frame(t(as.matrix(coef(lasso_inter)!=0)))
+
+#Como podemos tener una gran cantidad de valores repetidos con esto, 
+#vamos a aplica la funciÃ³n unique, que nos ayudarÃ¡ a eliminar valores repetidos
+coeficientes2 <- unique(coeficientes2)
+
+
+#Con esto, vamos a obtener la combinaciÃ³n que tiene el menor BIC
+BIC_lasso_comp<-sapply(1:length(coeficientes2$X.Intercept.), function(x){
+  BIC(glm(formula = y ~ X2[,unlist(coeficientes2[x,])] - 1, family = gaussian))}) 
+
+#Utilizamos la segunda forma porque la primera tiene algunas complicaciones
+best_lasso_comp2 <- glm(formula = y ~ X2_aux[,unlist(coeficientes2[which.min(BIC_lasso_comp),c(-1)])], family = gaussian)
+#print(coef(best_lasso_comp2))
+
+
+AjusteLasso_Interacciones <- glm(formula = brozek ~ abdom + age:abdom + age:thigh + height:wrist, data = fat)
+AjusteLasso_Interacciones$coefficients
+
+#Verificamos el BIC 
+#summary(BIC_lasso_comp)
+#summary(best_lasso_comp2)
+#summary(AjusteLasso_Interacciones)
+#BIC(best_lasso_comp2)
+BIC_AjusteLasso_Interacciones<-BIC(AjusteLasso_Interacciones)
+sprintf("BIC: %f", BIC_AjusteLasso_Interacciones)
+```
+
+Para el séptimo subconjunto ``AjusteLassoInteracciones``, con los nuevos cambios en el modelo lasso con interacciones obtuvimos un BIC de `r BIC_AjusteLasso_Interacciones`. (Chunk AjusteLassoInteracciones, linea 345) 
+
+Con las interacciones notamos una pequeña mejoría del BIC.
+
+Ahora, probaremos con distintas funciones ligas (identidad, log) en combinación con el modelo Gama con el fin de ver si con esto logramos mejorar el puntaje de BIC obtenidos hasta este momento.
+
+```{r GamaLigasBackForLasso,echo=FALSE,message=FALSE,warning=FALSE}
+modelo_gamma_x <- glm(formula = brozek ~ height + abdom  + wrist,
+                              family = Gamma(link = "identity"), data = fat)
+
+modelo_gamma_log <- glm(formula = brozek ~ height + abdom  + wrist,
+                              family = Gamma(link = "log"), data = fat)
+
+
+#Metodo stepwise con backward
+modelo_gamma_x2 <- glm(formula = brozek ~ weight + abdom + wrist, family = Gamma(link = "identity"), data = fat)
+
+modelo_gamma_log2 <- glm(formula = brozek ~ weight + abdom + wrist, family = Gamma(link = "log"), data = fat)
+
+#Forward
+modelo_gamma_x3 <- glm(formula = brozek ~ abdom + height + abdom + wrist, family = Gamma(link = "identity"), data = fat)
+
+modelo_gamma_log3 <- glm(formula = brozek ~ abdom + height + abdom + wrist, family = Gamma(link = "log"), data = fat)
+
+#Segundo inciso tomando las mejoras
+#Backward
+modelo_gamma_x4 <- glm(formula = brozek ~ hip + height:hip + neck:abdom + neck:hip, family = Gamma(link = "identity"), data = fat)
+
+modelo_gamma_log4 <- glm(formula = brozek ~ hip + height:hip + neck:abdom + neck:hip, family = Gamma(link = "log"), data = fat)
+
+#Forward 
+modelo_gamma_x5 <- glm(formula = brozek ~ abdom + height:wrist + chest:hip, family = Gamma(link = "identity"), data = fat)
+
+modelo_gamma_log5 <- glm(formula = brozek ~ abdom + height:wrist + chest:hip, family = Gamma(link = "log"), data = fat)
+
+#Lasso 
+modelo_gamma_x6 <- glm(formula = brozek ~ abdom + age:abdom + age:thigh + height:wrist, family = Gamma(link = "identity"), data = fat)
+
+modelo_gamma_log6 <- glm(formula = brozek ~ abdom + age:abdom + age:thigh  + height:wrist, family = Gamma(link = "log"), data = fat)
+
+#BIC's
+#print(BIC(modelo_gamma_x))
+#print(BIC(modelo_gamma_log))
+#print(BIC(modelo_gamma_x2))
+#print(BIC(modelo_gamma_log2))
+#print(BIC(modelo_gamma_x3))
+#print(BIC(modelo_gamma_log3))
+#print(BIC(modelo_gamma_x4))
+#print(BIC(modelo_gamma_log4))
+#print(BIC(modelo_gamma_x5))
+#print(BIC(modelo_gamma_log5))
+#print(BIC(modelo_gamma_x6))
+#print(BIC(modelo_gamma_log6))
+
+#Mejor modelo segun el criterio del BIC
+Lista_bic_modelos <- c(BIC(modelo_gamma_x), BIC(modelo_gamma_log), BIC(modelo_gamma_x2), BIC(modelo_gamma_log2), BIC(modelo_gamma_x3), BIC(modelo_gamma_log3), BIC(modelo_gamma_x4), BIC(modelo_gamma_log4), BIC(modelo_gamma_x5), BIC(modelo_gamma_log5), BIC(modelo_gamma_x6), BIC(modelo_gamma_log6))
+
+Lista_modelos <- c(modelo_gamma_x, modelo_gamma_log, modelo_gamma_x2, modelo_gamma_log2, modelo_gamma_x3, modelo_gamma_log3, modelo_gamma_x4, modelo_gamma_log4, modelo_gamma_x5, modelo_gamma_log5, modelo_gamma_x6, modelo_gamma_log6)
+
+min_index <- which.min(Lista_bic_modelos)
+print(min_index) #con esto obtenemos el mejor modelo seleccionado a partir del criterio del BIC 
+menor_bic <- Lista_bic_modelos[[min_index]] #extraemos el valor del BIC y lo guardamos en una variable nueva
+
+coef(modelo_gamma_log4)#obtenemos los coeficientes que componen el mejor modelo 
+
+BIC_GamaLigasBackForLasso<-menor_bic
+sprintf("BIC: %f", BIC_GamaLigasBackForLasso)
+```
+
+Para el octavo subconjunto de modelos ``GamaLigasBackForLasso``, el mejor modelo considerando el modelo Gama con distintas ligas (identidad, log) y distintos métodos tales como backward, forward y lasso, es el que tiene un BIC de `r BIC_GamaLigasBackForLasso`, el cual es una Gama con liga log. (Chunk GamaLigasBackForLasso, linea 396) 
+
+
+
+```{r ajusteCuadraticosubset,echo=FALSE,message=FALSE,warning=FALSE}
+#En este apartado lo que se busca es hacer un proceso similar al anterior generando modelo con la diferencia de que ahora se tomara el cuadrado de las variables
+
+#MÃ©todo mejor subconjunto
+ajusteCuadratico_subset <- lm(formula = brozek ~ height + I(height^2) + abdom + I(abdom^2) + wrist + I(wrist^2),data = fat)
+
+#Metodo stepwise(Forward)
+ajusteCuadratico1 <- lm(formula = brozek ~ weight + I(weight^2) + abdom + I(abdom^2) + wrist + I(wrist^2),
+                       data = fat)
+
+#Backward
+ajusteCuadratico2 <- lm(formula = brozek ~ age + I(age^2) + abdom + I(abdom^2) + wrist + I(wrist^2),data = fat)
+
+#Lasso 
+ajusteCuadratico_Lasso <- lm(formula = brozek ~ age + I(age^2) + height + I(height^2) + abdom + I(abdom^2) + wrist + I(wrist^2), data = fat)
+
+#Metodo Stepwise(Backward)
+ajusteCuadraticox4 <- glm(formula = brozek ~ weight + I(weight^2) + abdom + I(abdom^2) + wrist + I(wrist^2),family = Gamma(link = "identity"), data = fat)
+
+ajusteCuadraticoLog4 <- glm(formula = brozek ~ weight + I(weight^2) + abdom + I(abdom^2) + wrist + I(wrist^2),family = Gamma(link = "log"), data = fat)
+
+#Forward 
+ajusteCuadraticox5 <- glm(formula = brozek ~ abdom + I(abdom^2) + height:wrist + I(height^2):I(wrist^2) + chest:hip + I(chest^2):I(hip^2),family = Gamma(link = "identity"), data = fat)
+
+ajusteCuadraticoLog5 <- glm(formula = brozek ~ abdom + I(abdom^2) + height:wrist + I(height^2):wrist + chest:hip + I(chest^2):hip,family = Gamma(link = "log"), data = fat)
+
+#Lasso 
+ajusteCuadraticox6 <- glm(formula = brozek ~ abdom + I(abdom^2) + age:abdom + I(age^2):abdom + age:thigh + I(age^2):thigh + height:wrist + I(height^2):wrist,family = Gamma(link = "identity"), data = fat)
+
+ajusteCuadraticoLog6 <- glm(formula = brozek ~ abdom + I(abdom^2) + age:abdom + I(age^2):abdom + age:thigh + I(age^2):thigh + height:wrist + I(height^2):wrist,family = Gamma(link = "log"), data = fat)
+
+#print(BIC(ajusteCuadratico1))
+#print(BIC(ajusteCuadratico2))
+#print(BIC(ajusteCuadratico_Lasso))
+#print(BIC(ajusteCuadraticox4))
+#print(BIC(ajusteCuadraticoLog4))
+#print(BIC(ajusteCuadraticox5))
+#print(BIC(ajusteCuadraticoLog5))
+#print(BIC(ajusteCuadraticox6))
+#print(BIC(ajusteCuadraticoLog6))
+
+#Mejor modelo 
+Lista_bic_modelos_al_cuadrado <- c(BIC(ajusteCuadratico_subset), BIC(ajusteCuadratico1), BIC(ajusteCuadratico2), BIC(ajusteCuadratico_Lasso), BIC(ajusteCuadraticox4), BIC(ajusteCuadraticoLog4), BIC(ajusteCuadraticox5), BIC(ajusteCuadraticoLog5), BIC(ajusteCuadraticox6), BIC(ajusteCuadraticoLog6))
+
+Lista_modelos_variables_al_cuadrado <- c(ajusteCuadratico_subset, ajusteCuadratico1, ajusteCuadratico2, ajusteCuadratico_Lasso, ajusteCuadraticox4, ajusteCuadraticoLog4, ajusteCuadraticox5, ajusteCuadraticoLog5, ajusteCuadraticox6, ajusteCuadraticoLog6)
+
+min_index_sqr <- which.min(Lista_bic_modelos_al_cuadrado)
+#print(min_index_sqr)
+menor_bic_cuadrado <- Lista_bic_modelos_al_cuadrado[[min_index_sqr]]
+
+coef(ajusteCuadratico_subset)
+BIC_menor_bic_cuadrado<-menor_bic_cuadrado
+sprintf("BIC: %f", BIC_menor_bic_cuadrado)
+```
+Por último, en el subconjunto noveno de modelos ``ajusteCuadraticosubset``, usando una versión extendida que integra el cuadrado de las variables, se tiene un BIC de `r BIC_menor_bic_cuadrado` como el mejor. (Chunk ajusteCuadraticosubset, linea 463) 
+
+
+Presentamos a contunuación un Cuadro con los mejores modelos obtenidos en cada subconjunto con su respectivo BIC. Es posible observar que el modelo con el menor BIC de 1405.596 es uno con interacciones, en donde se consideran las covariables ``abdom``, y las interacciones de ``height:wrist`` y ``chest:hip``. La variable presente en todos los modelos es ``abdom``, seguido de ``wrist`` en 7 modelos.  
+
+\begin{table}[h]
+  \centering
+  \footnotesize
+  \begin{tabular}{|l|l|l|l|}
+    \hline
+    No. & Método de selección& Covariables y coeficientes estimados& BIC \\
+    \hline
+    1 & fitBestSubset & `r names(coef(best_subset, 3))`& 1412.142 \\
+     &  & `r coef(best_subset, 3)`&  \\
+    2 & modeloforward & `r names(coef(fit_forward, 3) )`& 1412.255 \\
+     &  & `r coef(fit_forward, 3) `& \\
+    3 & modelobackward & `r names(coef(fit_backward, 3))`& 1415.872 \\
+     & & `r coef(fit_backward, 3)`&  \\
+    4 & AjusteModeloLasso & `r names(print(coeficientes ))`& 1413.107  \\
+     &  & `r coeficientes`&   \\
+    5 & Ajusteforward2 & `r names(coef(forward_interacciones, 3))`& 1405.596   \\
+     &  & `r coef(forward_interacciones, 3)`&   \\
+    6 & Ajustebackward2 & `r names(coef(Metodo_backward_interacciones, 4))`& 1416.311   \\
+     & & `r coef(Metodo_backward_interacciones, 4)`&   \\
+    7 & AjusteLassoInteracciones & `r names(AjusteLasso_Interacciones$coefficients)`& 1411.985   \\
+     & & `r AjusteLasso_Interacciones$coefficients`&  \\
+    8 & GamaLigasBackForLasso & `r names(coef(modelo_gamma_log4))`& 1490.06  \\
+     & & `r coef(modelo_gamma_log4)`&   \\
+    9 & ajusteCuadraticosubset & (Intercept), height, I(height$\wedge$2), abdom, I(abdom$\wedge$2), wrist, I(wrist$\wedge$2) & 1423.089  \\
+     &  & -34.5067, 1.0519, -0.0106, 1.4299, -0.0037, -5.8929, 0.1188 &   \\
+    \hline
+  \end{tabular}
+  \caption{Resultados de los métodos de selección}
+  \label{tabla:resultados}
+\end{table}
+
+Para inferencia e interpretación de los coeficientes del modelo elegido, es necesario el cumplimiento de los supuestos. En la prueba gráfica de los supuestos, tales como la linealidad (Residuals vs Fitted),  homocedasticidad (Scale-Location), normalidad (Q-Q Residuals) y presencia de outliers influyentes (Residuals vs Leverage), se observa que no hay problemas graves con los supuestos. (Chunk plotsmodelo, linea 566)
+
+
+
+```{r residualplotsmodelo1, echo=FALSE, fig.height=4, fig.width=7 , include=FALSE}
+#par(mfrow=c(1,1))
+library(car)
+fat$height_wrist<-fat$height*fat$wrist
+fat$chest_hip<-fat$chest*fat$hip
+modelo1<-lm(formula = brozek ~ abdom + height_wrist + chest_hip,
+                      data = fat)
+```
+
+
+```{r plotsmodelo, echo=FALSE, fig.height=2.5, fig.width=7}
+par(mfrow=c(1,2))
+#par(mar=c(4, 5, 3, 1))
+plot(modelo1, 1)   #linealidad
+plot(modelo1, 3)   #homocedasticidad
+plot(modelo1, 2)   #normalidad
+plot(modelo1, 5)   #Outliers 
+```
+
+
+```{r linealidad, echo=FALSE, include=FALSE}
+library(car)
+residualPlots_modelo1<-residualPlots(modelo1)
+residualPlots_modelo1[,2]
+```
+
+La linealidad se comprueba con la siguiente prueba. (Chunk linealidad, linea 586)
+
+```{r, echo=FALSE}
+residualPlots_modelo1[,2]
+```
+
+
+
+```{r pruebasmodelo, echo=FALSE, include=FALSE}
+#Varianza constante 
+#Se basa en los errores estandarizados o estudentizados
+#Mismas pruebas usadas en regresión lineal simple:
+library(lmtest)
+sbpt1<-lmtest::bptest(modelo1) #NO se rechaza H0 de homocedasticidad, NO hay problemas
+sbpt1p<-sbpt1$p.value #p-value de la prueba Breusch Pagan estudentizado
+
+#Normalidad 
+#Se basa en los residuales estandarizados o estudentizados
+#Mismas pruebas que se usaron en regresi?n lineal simple:
+library(broom)
+Datosmodelo1=augment(modelo1)
+swt1<-shapiro.test(Datosmodelo1$.std.resid) #Se rechaza H0 de normalidad, hay problemas
+swt1p<-swt1$p.value
+library(nortest)
+kst1<-nortest::lillie.test(Datosmodelo1$.std.resid)#Se rechaza H0 de normalidad, hay problemas
+kst1p<-kst1$p.value
+library(tseries)
+jbt1<-tseries::jarque.bera.test(Datosmodelo1$.std.resid)#Se rechaza H0 de normalidad, hay problemas
+jbt1p<-jbt1$p.value
+```
+
+
+De acuerdo con la prueba ``studentized Breusch-Pagan`` se tiene un p-value de `r sbpt1p` por lo que no se rechaza la hipótesis nula de homocesaticidad, por otra parte las pruebas de normalidad Jarque-Bera y Kolmogorov-Smirnov no rechazan la hipótesis nula de normalidad, con p-value de `r jbt1p` y `r kst1p`, respectivamente. (Chunk pruebasmodelo, linea 575)
+
+Con esto, podemos argumentar que por cada unidad de incremento en la circunferencia del abdomen ``abdom`` en cm, el porcentaje de grasa corporal (brozek) incrementa en $0.8731348$. Por otra parte, con el incremento en una unidad de la interacción estatura - curcunferencia de la muñeca (``height:wrist``) disminuye  el porcentaje de grasa corporal en $-0.0185435$, y el incremento en una unidad de la interacción circunferencia del pecho - circunferencia de cadera disminuye el porcentaje de grasa corporal en $-0.0012936$. 
+
+
+
+
+\section{3. Componentes principales y análisis factorial exploratorio}
+
+Se analiza la personalidad de  de 228 estudiates de una universidad de los Estados Unidos a partir de una encuesta resumida en ``Dat3Ex.csv``. Las respuestas de 1 "muy en desacuerdo", 2  "un poco en desacuerdo", 3  "ni de acuerdo ni en desacuerdo", 4  "un poco de acuerdo" y  5  "muy de acuerdo", para un grupo de 44 preguntas, de las cuales tomaremos 15: $V1, V2, V4, V6, V9, V12, V14, V16, V17, V26, V27, V29, V31, V34, V37$ (para mayor detalle ver el cuestionario). Los objetivos son los de obtener los componentes principales y hacer un análisis exploratorio factorial, para identificar dimensiones interesantes de los datos en su escala original y transformada. 
+
+
+```{r datos3, include=FALSE}
+datos3  <- read.csv("Dat3Ex.csv") #Variables continuas sin escalar 
+datos3 <- datos3[,c("V1", "V2", "V4", "V6", "V9", "V12","V14","V16","V17","V26",
+                    "V27","V29","V31","V34","V37")] #seleccionamos las preguntas
+names(datos3)=c("Parlanchin", "Victimista", "Deprimido", "Reservado", "Relajado",  
+                "Peleonero", "Tenso", "Entusiasta",  "Indulgente", "Asertivo", 
+                "Frio", "Malhumorado", "Timido", "Calmado", "Grosero")#renombramos
+```
+
+```{r, echo=FALSE}
+#colSums(is.na(datos3))#Verificar si las variables tienen Na's
+```
+
+```{r, echo=FALSE}
+#library(GGally)
+#X11()
+#ggpairs(datos3)#Ver las relaciones y si es necesario escalar
+```
+
+Con la ayuda de la librería ``factoextra`` se obtuvieron los $Componentes\hspace{.2cm}Principales$ con la función ``prcomp`` (ver Chunk factorCP en la línea 64). 
+
+```{r factorCP, include=FALSE}
+library(factoextra)
+R.CP_org=prcomp(datos3,  scale = FALSE) #obtenemos las componentes principales sin sacale 
+R.CP_est=prcomp(datos3, scale = TRUE) #obtenemos las componentes principales con sacale  
+R.CP_log=prcomp(log10(datos3), scale = FALSE)#obtenemos las componentes principales con log
+
+#Nos apoyamos con la varianza que recuperamos para decidir 
+print(summary(R.CP_org), digits=3) #en 4 se acumulan 62.6% y en 5 67.9%
+print(summary(R.CP_est), digits=3) #en 4 se acumula 62.21% y en 5 67.48%
+print(summary(R.CP_log), digits=3) #en 4 se acumula 63.92% y en 5 65.58%
+```
+
+Posteriormente se usa la función ``fviz_eig``  para el número de componentes a considerar según varianzas y en la siguiente Figura se muestran para los datos escalados y no escalados, se suguieren entre 4 o 5 componentes  pues después de estos ya no hay mucho cambio en la varianza que aportan. Además se acumula en los tres casos un aproximado de 62% a 63% de la varianza total cuando consideramos 4 componentes (Chunk Grafica13, linea 79).   
+
+
+```{r Grafica13, fig.dim=c(7.0, 3.5),	fig.align = "center" ,fig.cap= "Índices para número de componentes principales", echo=FALSE}
+library(gridExtra)
+plot_org <- fviz_eig(R.CP_org, main = "Sin escalar", choice ="variance", addlabels = TRUE, labelsize = 3,repel = TRUE)+theme(text = element_text(size = 9))
+plot_est <- fviz_eig(R.CP_est, main = "Estandarizados", choice ="variance", addlabels = TRUE, labelsize = 3,repel = TRUE)+theme(text = element_text(size = 9))
+plot_log <- fviz_eig(R.CP_log, main = "Logaritmica", choice ="variance", addlabels = TRUE, labelsize = 3,repel = TRUE)+theme(text = element_text(size = 9))
+grid.arrange(plot_org, plot_est, plot_log, ncol = 3)
+```
+
+```{r Correlation, include=FALSE}
+#Ahora para interpretar, hay que sacar correlaciones entre comp principles
+#y las variables originales 
+#A mayor/menor valor en el comp pricipal hay mas "variables" 
+options(digits=2)
+cor(cbind(R.CP_org$x[,1:4],(datos3)))  
+cor(cbind(R.CP_est$x[,1:4], (scale(datos3))))
+cor(cbind(R.CP_log$x[,1:4], (log(datos3))))
+```
+
+Analizamos las correlaciones de las primeras cuatro componentes con las variables originales (Chunk Correlation, linea 87). Se describen los siguientes resultados generales, considerando correlaciones mayores a 0.5 en valor absoluto, para dar una mayor comprensión y contexto de las variables y componentes principales. La siguiente descripción solamente se presenta para los valores originales, también se hace el ejercicio para datos estandarizados y en logaritmos, sin embargo los resultados son similares por lo que no se describen.   
+
+
+Para los datos sin escalar, las variables Deprimido, Tenso, Malhumorado y Grosero son las que tienen mayor asociación positiva en el componente 1, y por otro lado Relajado, Calmado y Entusiasta son las que tienen mayor asociación negativa con el componente 1. Las variables Parlanchin, Asertivo y Entusiasta son las de mayor asociación positiva para el componente 2, y Tímido y Reservado son las de mayor asociación negativa para el componente 2. Para el componente 3 las de mayor relación  positiva son Relajado, Frío y Calmado, mientras que para la relación negativa  con el componente 3 no hay valores mayores a 0.5 en valor absoluto. Y para el componente 4 no hay valores mayores a 0.5 en valor absoluto (sin embargo, mencionaremos que las de mayor relación positiva son Tímido, Indulgente y Entusiasta, mientras que las únicas con relación negativa son Frío, Peleonero y Victimista). 
+
+
+```{r, echo=FALSE, include=FALSE}
+#2. Para los datos estandarizados, las variables Deprimido, Tenso, Malhumorado, Grosero, Victimista, Peleonero y Frío son las que tienen mayor asociación positiva en el componente 1, y por otro lado Relajado, Calmado y Entusiasta son las que tienen mayor asociación negativa con el componente 1. Las variables Parlanchin y Asertivo son las de mayor asociación positiva para el componente 2, y Tímido y Reservado son las de mayor asociación negativa para el componente 2. Para el componente 3 las de mayor relación  positiva son Relajado, Frío y Calmado, mientras que para la relación negativa  con el componente 3 no hay valores mayores a 0.5 en valor absoluto. Y para el componente 4 la única variable con asociación negativa importante es indulgente, y todas las demás asociaciones son negativas menores a 0.5 en valor absoluto.  
+
+#3. Para los datos en escala logarítmica, las variables Grosero, Deprimido, Frio, Peleonero, Tenso, Malhumorado y Victimista son las que tienen mayor asociación positiva en el componente 1, y por otro lado Relajado es la que tienen mayor asociación negativa con el componente 1. Las variables Parlanchin, Asertivo y Entusiasta son las de mayor asociación positiva para el componente 2, y Tímido y Reservado son las de mayor asociación negativa para el componente 2. Para el componente 3 la de mayor relación  positiva es Relajado mientras que para la relación negativa  con el componente 3 es Tímido. Y para el componente 4 no hay valores mayores a 0.5 en valor absoluto. 
+```
+
+
+
+
+
+Para mayor interpretabilidad visual tenemos la siguiente Gráfica (Chunk Grafica23, línea 118), sólo se presentan los datos originales y los de escala logaritmica, las estandarizadas son iguales a las originales. Estas son las proyecciones de las variables de mayor peso en los primeros 2 componentes principales, rescatan la mayor varianza, podemos observar el sentido y magnitud de las fechas para visualizar la influencia de cada variables en cada componente. 
+
+
+```{r Grafica23,fig.dim=c(9, 4), fig.align = "center", fig.cap= "Proyeccion en componentes (izquierda: escala original; derecha:escala log)" ,echo=FALSE}
+plot1<-fviz_pca_var(R.CP_org,labelsize = 3,repel = TRUE,
+             col.var = "contrib") + theme(text = element_text(size = 7),
+        axis.title = element_text(size = 7.5),
+        axis.text = element_text(size = 7.5))
+
+plot2<-fviz_pca_var(R.CP_est,labelsize = 3,repel = TRUE,
+             col.var = "contrib") + theme(text = element_text(size = 7),
+        axis.title = element_text(size = 7.5),
+        axis.text = element_text(size = 7.5))
+
+plot3<-fviz_pca_var(R.CP_log,labelsize = 3,repel = TRUE,
+             col.var= "contrib")+ theme(text = element_text(size = 7),
+        axis.title = element_text(size = 7.5),
+        axis.text = element_text(size = 7.5))
+grid.arrange(plot1,  plot3,  ncol=2)
+```
+
+Para continuar con el análisis consideramos el enfoque de $Análisis\hspace{.1cm}Factorial\hspace{0.1cm}Exploratorio$, para ello nos apoyamos de la librería ``pysch`` y la función ``fa``. De nuevo consideramos datos sin escalar y estandarizados, optamos por considerar 3 factores, en los 2 casos Indulgente no queda en ninguno (Chunk Factorial, linea 131).
+
+```{r Factorial, include=FALSE}
+library(psych)
+set.seed(340)
+parallel <- fa.parallel((datos3), fa="fa", n.iter=100) #Suguiere 3 factores 
+
+FE_org <- fa(datos3, cor= "cor",
+             covar = TRUE, nfactor = 3, rotate = "none")
+
+FE_est <- fa(datos3, cor= "cov",
+             covar = TRUE, nfactor = 3, rotate = "varimax")
+
+FE_log <- fa(log10(datos3), cor= "cor",
+             covar = TRUE, nfactor = 3, rotate = "none")
+```
+
+```{r Criterios, include=FALSE}
+FE_org #Explica el 46%, no rechazamos H0 es buena idea usarlo, -192 BIC, RMSEA de 0.05 
+FE_est #Explica el 46%, no rechazamos H0, RMSEA de  0.05  y BIC = -192
+FE_log #Excplica el 41% no rechazamos H0, RMSEA de 0.05 , TuckerL = 0.99 y BIC= -186
+
+FE_org$communalities #¿Qué tan bien explican cada variable?  
+FE_est$communalities
+FE_log$communalities #Este explica mejor individualmentes pero los otros en general
+```
+
+
+```{r Grafica33, echo=FALSE, fig.width=7, fig.height=4}
+par( mfrow= c(1,2) )
+
+plot4<-fa.diagram(FE_org,cut = 0.4 , main = "Sin escala")
+plot5<-fa.diagram(FE_est,cut = 0.4 , main = "Estandarizados")
+
+```
+
+De las gráficas anteriores podemos notar, 3 componentes parecen ser suficiente para resumir la información, en contraste con componentes principales hemos reducido un poco más la dimensionalidad, además los resultados son muy similares a los componentes principales pues las variables de mayor peso se repiten casi todos los casos. 
+
+
+Para decidirnos por un modelo se probaron varias rotaciones como varimax y simplimax, también se consideraron a las variables como ordinales y de nuevo con ayuda de fa se obtuvieron las variables latentes mientras que con principal las componentes principales (ver Chunks RotacionesCP, RotacionesAFE y Ordinales; lineas 170, 203 y 228). Optamos por un modelo de Componente principales pues estos recuperan más varianza y dentro de estos el que usa la rotación "cluster" y maneja las variables como ordinales es el mejor rankeado pues recupera un 66% de varianza total, además nos restringimos a considerar sólo 3 componentes pues el cuarto sólo está relacionado con una variable (Indulgente).  
+
+
+```{r RotacionesCP, include=FALSE}
+PC_org <-principal(datos3, cor="cov",
+                   covar = TRUE, nfactor = 4, rotate = "none")
+PC_Esc <-principal(datos3, cor="cor",
+                   covar = TRUE, nfactor = 4, rotate = "none")
+print(PC_org, cut = .5) #Acumula 61 y explica las variables en este orden: 0.42 0.27 0.19 0.13
+print(PC_Esc, cut = .5) #Acumula 60 y explica en:  0.42 0.25 0.20 0.12
+
+
+PC_org_varimax <-principal(datos3, cor="cov",
+                   covar = TRUE, nfactor = 4, rotate = "varimax")
+PC_Esc_varimax <-principal(datos3, cor="cor",
+                   covar = TRUE, nfactor = 4, rotate = "varimax")
+print(PC_org_varimax, cut = .5) #Acumula 61 y explica en: 0.33 0.30 0.22 0.14
+print(PC_Esc_varimax, cut = .5) #Acumula 60 y explica en: 0.33 0.30 0.22 0.14
+
+
+PC_org_oblimin <-principal(datos3, cor="cov",
+                   covar = TRUE, nfactor = 4, rotate = "oblimin")
+PC_Esc_oblimin <-principal(datos3, cor="cor",
+                   covar = TRUE, nfactor = 4, rotate = "oblimin")
+print(PC_org_oblimin, cut = .5) #Acumula 61 y explica en: 0.42 0.27 0.19 0.13
+print(PC_Esc_oblimin, cut = .5) #Acumula 60 y explica en: 0.42 0.25 0.20 0.12
+
+
+PC_org_cluster <-principal(datos3, cor="cov",
+                   covar = TRUE, nfactor = 4, rotate = "cluster")
+PC_Esc_cluster <-principal(datos3, cor="cor",
+                   covar = TRUE, nfactor = 4, rotate = "cluster")
+print(PC_org_cluster, cut = .5) #Acumula 61 y explica en: 0.33 0.30 0.20 0.17
+print(PC_Esc_cluster, cut = .5) #Acumula 60 y explica en: 0.31 0.29 0.27 0.13
+```
+
+```{r RotacionesAFE, include=FALSE}
+FA_org_varimax <-fa(datos3, cor="cov",
+                   covar = TRUE, nfactor = 4, rotate = "varimax")
+FA_Esc_varimax <-fa(datos3, cor="cor",
+                   covar = TRUE, nfactor = 4, rotate = "varimax")
+print(FA_org_varimax, cut = .5) #Acumula 46
+print(FA_Esc_varimax, cut = .5) #Acumula 46
+
+
+FA_org_oblimin <-fa(datos3, cor="cov",
+                   covar = TRUE, nfactor = 4, rotate = "oblimin")
+FA_Esc_oblimin <-fa(datos3, cor="cor",
+                   covar = TRUE, nfactor = 4, rotate = "oblimin")
+print(FA_org_oblimin, cut = .5) #Ambos acumulan 46
+print(FA_Esc_oblimin, cut = .5)
+
+
+FA_org_simplimax <-fa(datos3, cor="cov",
+                   covar = TRUE, nfactor = 4, rotate = "simplimax")
+FA_Esc_simplimax <-fa(datos3, cor="cor",
+                   covar = TRUE, nfactor = 4, rotate = "simplimax")
+print(FA_org_simplimax, cut = .5) #Acumulan 46
+print(FA_Esc_simplimax, cut = .5) #Acumulan 46
+```
+
+```{r Ordinales, include=FALSE}
+CP_ord_varimax <- principal(datos3, cor="mixed",
+                   covar = TRUE, nfactor = 4, rotate = "varimax")
+CP_ord_cluster <- principal(datos3, cor="mixed",
+                   covar = TRUE, nfactor = 4, rotate = "cluster")
+
+FA_ord_oblimin <- fa(datos3, cor="mixed",
+                   covar = TRUE, nfactor = 4, rotate = "oblimin")
+FA_ord_simplimax <- fa(datos3, cor="mixed",
+                   covar = TRUE, nfactor = 4, rotate = "simplimax")
+
+print(CP_ord_varimax, cut=0.5) #Acumula 66 y explica 0.32 0.28 0.28 0.12
+print(CP_ord_cluster, cut =0.5) #Acumula 66 y explica en:  0.31 0.29 0.27 0.13
+print(FA_ord_oblimin, cut=.5)
+print(FA_ord_simplimax, cut=.5)
+```
+
+```{r Grafica43, fig.cap="Componentes principales modelo seleccionado", echo=FALSE}
+fa.diagram(CP_ord_cluster, cut = .5, digits = 2)
+```
+
+
+Ya con nuestro modelo seleccionado pasamos a la interpretación, según la Figura 5. El componente 1 corresponde a alumnos victimistas, fríos, groseros y peleoneros. En el componente 2,  tenemos alumnos para los que ser asertivo, parlanchín y entusiasta se tiene un mayor relación positiva con el componente y ser tímidos y reservados los mayores valores negativos.  Finalmente, en el componente 3 podemos notar mayores relaciones de alumnos deprimidos, malhumorados y tensos, mientras tenemos negativamente a alumnos calmados y relajados.  
+
+
+
+\section{ 4. Análisis de conglomerados}
+
+El objetivo del analisis es identificar grupos de clientes  para focalizar la publicidad de Oddjob Airways, a partir de una encuesta resumida en ``Dat4ExB.csv``, y cuyas respuestas van de 1 a 100 (100 es que la persona considera que un aspecto es crucial en el servicio, mientras que 1 corresponde a que no lo es). Estos aspectos son puntualidad (e1), servicio según lo ofrecido (e2), experiencia placentera (e5), comodidad (e8), seguridad (e9), estado del avión (e10), comida adecuada (e16), hospitalidad (e17), viajar de forma sencilla (e21) y entretenimiento a bordo (e22). Como primer paso vamos a considerar que las variables son continuas, entonces dado ese supuesto obtendremos algunos grupos considerando el método k-means. 
+
+```{r LeerDatos2, include=F}
+#leemos los datos, omitimos na´s y eliminamos la primer columna
+datos <- na.omit( read_csv("Dat4ExB.csv")[,-1])
+```
+
+
+Aún cuando el indicador de ``Average Silhouette width`` y los indicadores de ``Connectivity`` y ``Dunn``  muestran que el número óptimo de clusters es de 2, el indicador de ``Hubert statistic values`` muestra que deben de ser 3, y el indicador de ``Dindex values`` que deben de ser 5. Por lo que no hay un concenso indiscutible del número de clusters a considerar como óptimos. (Chunks clValid, fviz_nbclust_kmeans_silhouette y NbClust, lineas 66, 78 y  87). 
+
+
+```{r clValid, echo=FALSE, fig.width=8, fig.height=4, message=FALSE,warning=FALSE, include=FALSE}
+par(mfrow=c(1,2))
+# Compute clValid
+library("clValid")
+my_data <- scale(datos)
+#intern <- clValid(my_data, nClust = 2:8, 
+#              clMethods = c("hierarchical","kmeans","pam",'clara'),
+#              validation = "internal")
+#plot(intern)
+```
+
+
+```{r fviz_nbclust_kmeans_silhouette, echo=F,message=FALSE,warning=FALSE, include=FALSE}
+set.seed(340)
+library("factoextra")
+fig_s = fviz_nbclust(datos, FUNcluster = kmeans, method = c("silhouette"), k.max = 8, nstart = 20)
+fig_s
+#fig_s$data
+```
+
+
+```{r NbClust, echo=FALSE, include=FALSE}
+library("NbClust")
+set.seed(340)
+res.nbclust <- NbClust(datos, distance = "euclidean",
+                  min.nc = 2, max.nc = 8, 
+                  method = "complete", index ="all") 
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+km.res <- kmeans(datos, 3, nstart = 25)
+fviz_cluster(km.res, data = datos, frame.type = "convex") + theme_bw()
+```
+
+```{r, echo=FALSE, include=FALSE}
+library("factoextra")
+# Compute hierarchical clustering and cut into 3 clusters
+res <- hcut(datos, k = 3, stand = TRUE)
+# Visualize
+fviz_dend(res, rect = TRUE, cex = 0.5,
+          k_colors = c("#00AFBB", "#E7B800", "#FC4E07"))
+```
+
+Se decidió tomar al menos tres aspectos generales del servicio detectados en las variables: puntualidad y servicio según lo ofrecido; seguridad y estado del avión; y comodidad, experiencia, entretenimiento, hospitalidad y comida. Podemos focalizar la publicidad de la empresa en 3 grupos de clientes con base a estos tres aspectos.
+
+
+```{r, echo=F,message=FALSE,warning=FALSE}
+#funcion kmeans con semilla para hacerlo un proceso iterativo
+set.seed(340)
+# K-means, K = 3 y 20 asignaciones aleatorias de clusters iniciales 
+# Aqui x corresponde a los datos que ya deben estar preprocesados para mejores resultados
+k.means <- kmeans(x = datos, centers = 3, nstart = 20)
+
+# La asignacion a un cluster se puede obtener con $cluster
+#table(k.means$cluster)
+```
+
+
+```{r clusters, echo=F, include=FALSE}
+#Vamos a definir una funcion para facilitar el cambio de k, ademas de incluir el metodo silhoutte
+data_K_means <- datos
+
+kmeans_analysis <- function(x, max.nc = 7, k = 0, seed = 1, plot = F) {
+    if (k == 0) {
+      set.seed(seed)
+      if (plot)
+        plot(fviz_nbclust(x, FUNcluster = kmeans, method = c("silhouette"), k.max = max.nc, nstart = 20))
+      k <- NbClust(x, max.nc = max.nc, method = "kmeans", index = "silhouette")$Best.nc[[1]]
+    }
+  kmeans <- kmeans(x, k, nstart = 25)
+  return(factor(kmeans$cluster))
+}
+
+data_K_means$k <- kmeans_analysis(datos)
+```
+
+
+```{r, echo=F, message=F, message=FALSE,warning=FALSE, include=FALSE}
+#Comenzaremos a ver el comportamiento por categoria de los clusters
+ggpairs(data_K_means, title= "Kmeans con 2 Grupos", aes(colour = k))
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+# Probemos nuevamente tomando ahora 3 grupos y ver que pasa con los datos 
+data_K_means$k <- kmeans_analysis(datos, k = 3)
+describeBy(data_K_means ~ k,mat=TRUE)
+datos_k3 <- data_K_means
+```
+
+En la siguiente Gráfica podemos observar la asignación de clusters para tres grupos, y las correlaciones entre los aspectos: las correlaciones más altas son entre puntualidad (e1) y servicio acorde a lo ofrecido (e2) por un lado, seguridad (e9) y avión en buen estado (e10) por otro, y por otro lado experiencia placentera (e5) con comodidad (e8).  
+
+```{r, echo=F, message=F,warning=FALSE,fig.dim = c(8, 6)}
+ggpairs(datos_k3, title="Kmeans con Tres Grupos", aes(colour = k), upper = list(continuous = wrap("cor", size = 2)))+theme_bw() 
+```
+
+```{r, include=F,message=FALSE,warning=FALSE}
+#Veamos que pasa con 4 clusters
+
+data_K_means$k <- kmeans_analysis(datos, k = 4)
+describeBy(data_K_means ~ k,mat=TRUE)
+```
+
+
+```{r, include=F, message=FALSE, warning=FALSE}
+ggpairs(data_K_means, title="Kmedias con Cuatro Grupos", aes(colour = k))
+```
+
+
+```{r, message=F, echo=F, include=F,message=FALSE,warning=FALSE}
+#Ahora vamos a tomar los datos estandarizados como una primer transformacion de escala
+data_K_means$k <- kmeans_analysis(as.data.frame(scale(datos))) 
+ggpairs(data_K_means, title="Datos Estandarizados con Dos Grupos", aes(colour = k))
+```
+
+
+```{r, message=F, echo=F, include=F, warning=FALSE}
+#repetimos el mismo proceso de tomar variables transformadas pero ahora con 3 grupos
+data_K_means$k <- kmeans_analysis(as.data.frame(scale(datos)), k = 3)
+ggpairs(data_K_means, title="Datos Estandarizados con Tres Grupos", aes(colour = k))
+```
+
+
+```{r, message=F, echo=F, include=F}
+data_K_means$k <- kmeans_analysis(as.data.frame(scale(datos)), k = 4)
+ggpairs(data_K_means, title="Datos Estandarizados con Cuatro Grupos", aes(colour = k))
+```
+
+
+En los siguientes resultados auxiliares a este análisis, tenemos que la primera y segunda componente principal conservan una varianza de 58.1% y 9.7% respectivamente. Además si consideramos 3 factores, tenemos consistencia en lo planteado con los grupos.  En ambos casos podemos observar e1 y e2 muy correlacionados o en el mismo factor; e5, e8, e16 y e22 por otra parte; y e9 y e10 por otra parte. 
+
+```{r CPrincipal, echo=F, message=F,warning=FALSE,fig.height=4, fig.width=4}
+R.CP <- prcomp(datos, scale = T)
+fviz_pca_var(R.CP,labelsize = 3,repel = TRUE,
+             col.var = "contrib") + theme(text = element_text(size = 7),
+        axis.title = element_text(size = 7.5),
+        axis.text = element_text(size = 7.5))
+
+Nfacs <- 3  # This is for four factors. You can change this as needed.
+fit <- factanal(datos, Nfacs, rotation="promax")
+library(psych)
+loads <- fit$loadings
+fa.diagram(loads)
+```
+
+```{r, echo=F, message=F, fig.dim = c(3.8, 2.7), fig.cap="Variables-PCA"}
+# Procedemos a obtener los componentes principales de los datos sin estandarizar para llegar a una conclusion y ver cuantos cluster elegir
+```
+
+En la primera gráfica siguiente, vemos que a la derecha se encuentran los clientes potenciales con buenas expectativas en general en todas las preguntas, y a la izquierda los de regular y mala, según el primer componente principal.
+
+```{r , echo=F, message=F, fig.height=3, fig.width=6}
+par(mfrow = c(2,2)) 
+par(mar = c(4, 5, 3, 1))
+data_K_means$k <- kmeans_analysis(datos)
+
+plot1<- fviz_pca_ind(R.CP, geom.ind = "point", 
+             col.ind = data_K_means$k, 
+             axes = c(1, 2), 
+             pointsize = 1.5,
+             submain="Kmedias con 2 Categorias")
+
+data_K_means$k <- kmeans_analysis(datos, k=3)
+
+plot2<- fviz_pca_ind(R.CP, geom.ind = "point", 
+             col.ind = data_K_means$k, 
+             axes = c(1, 2), 
+             pointsize = 1.5,
+             submain="Kmedias con 3 Categorias")
+
+data_K_means$k <- kmeans_analysis(datos, k=4)
+
+plot3<- fviz_pca_ind(R.CP, geom.ind = "point", 
+             col.ind = data_K_means$k, 
+             axes = c(1, 2), 
+             pointsize = 1.5,
+             submain="Kmedias con 4 Categorias")
+grid.arrange(plot1,plot2,plot3, ncol=2)
+```
+
+De acuerdo al método silhouette, se nos sugiere tomar dos grupos, pero en nuestro caso para mejorar la interpretación decidimos que es recomendable usar más de 2. Adicionalmente podemos ver que no cambia mucho la interpretación si nos quedamos  con 3 grupos o con 4, pues cuando agrupamos en 4 grupos, el grupo 4 combina parte de los grupos 1 y 3. 
+
+Observando los componentes principales, podemos decir que es mejor focalizar la publicidad en 3 grupos de clientes: los que esperan puntualidad y un servicio acorde a lo contratado; los que esperan seguridad y buen mantenimiento y estado del avión; y los que esperan comodidad, experiencia, hospitalidad y entretenimiento. Tal como se decidió agrupar desde un inicio.
+
+## Metodo Jerarquico Aglomerativo
+
+Para esto vamos a tomar que las variables son continuas como se hizo anteriormente y tomando tanto las escalas dadas como haciendo transformaciones. Ademas agregaremos las disimilaridades entre clientes y clusters.
+
+```{r,echo=F,message=F, warning=FALSE,include=FALSE}
+dataH <- datos
+distances <- c("euclidian", "maximum", "canberra", "manhattan", "minkowski")
+clustDistances <- c("ward.D", "ward.D2", "single", "complete")
+
+hclust_analysis <- function(datos, distance, clustDist) {
+  for (s1 in distance) {
+    dis <- dist(datos, method = s1)
+    for (s2 in clustDist) {
+      jer <- hclust(dis, method = s2)
+      plot(jer, main = paste(s1, s2))
+    }
+  }
+}
+
+hclust_analysis(datos, distances, clustDistances)
+hclust_analysis(as.data.frame(scale(datos)), distances, clustDistances)
+```
+
+
+```{r Modelos, echo=F, message=F}
+hEucD <- hclust(dist(datos), method = "ward.D")
+hEucD2 <- hclust(dist(datos), method = "ward.D2")
+hMaxD <- hclust(dist(datos, method = "maximum"), method = "ward.D")
+hMaxD2 <- hclust(dist(datos, method = "maximum"), method = "ward.D2")
+hCanD <- hclust(dist(datos, method = "canberra"), method = "ward.D")
+hCanD2 <- hclust(dist(datos, method = "canberra"), method = "ward.D2")
+hManD <- hclust(dist(datos, method = "manhattan"), method = "ward.D")
+hManD2 <- hclust(dist(datos, method = "manhattan"), method = "ward.D2")
+hMinD <- hclust(dist(datos, method = "minkowski"), method = "ward.D")
+hMinD2 <- hclust(dist(datos, method = "minkowski"), method = "ward.D2")
+```
+
+
+```{r, echo=F, message=F,warning=FALSE, fig.height=3, fig.width=6}
+dataH$c <- factor(cutree(hManD2, k = 2)) # cambiando el valor de k y el cluster graficamos las distintas opciones
+dataHc2 <- dataH
+plot11 <-fviz_pca_ind(R.CP, geom.ind = "point", 
+             col.ind = dataH$c, 
+             axes = c(1, 2), 
+             pointsize = 1.5,
+             submain="Mét Jerar 2 Gpos, Manhattan-Ward D2")
+
+dataH$c <- factor(cutree(hManD2, k = 3)) # cambiando el valor de k y el cluster graficamos las distintas opciones
+dataHc3 <- dataH
+plot12 <-fviz_pca_ind(R.CP, geom.ind = "point", 
+             col.ind = dataH$c, 
+             axes = c(1, 2), 
+             pointsize = 1.5,
+             submain="Mét Jerar 3 Gpos, Manhattan-Ward D2")
+
+dataH$c <- factor(cutree(hManD2, k = 4)) # cambiando el valor de k y el cluster graficamos las distintas opciones
+dataHc4 <- dataH
+plot13 <-fviz_pca_ind(R.CP, geom.ind = "point", 
+             col.ind = dataH$c, 
+             axes = c(1, 2), 
+             pointsize = 1.5,
+             submain="Mét Jerar 4 Gpos, Manhattan-Ward D2")
+
+grid.arrange(plot11,plot12,plot13, ncol=2)
+```
+
+
+En esta figura podemos observar las mismas comparaciones que realizamos en el ejercicio 1 donde se puede ver que el resultado obtenido en este caso aplicando el método aglomerativo resulto ser muy similar al obtenido con K-means. En esta ocasión los 3 grupos de clientes son: los que esperan puntualidad y servicio acorde a lo ofrecido, los que esperan seguridad y buen estado y mantenimiento del avión, y los que esperan experiencia placentera, comodidad, hospitalidad y entretenimiento. 
+
+
+```{r Grafica45, echo=F, message=F, include=FALSE, fig.dim = c(6, 5),}
+ggpairs(dataHc2, title="Método Jerarquico con Dos Grupos, Manhattan-Ward D2", aes(colour = c))
+```
+
+
+```{r, echo=F, message=F,warning=FALSE,echo=FALSE,include=FALSE}
+ggpairs(dataHc3, title="Método Jerarquico con Tres Grupos, Manhattan-Ward D2", aes(colour = c))
+```
+
+
+## Modificaciones y uso de Componentes principales
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+summary(R.CP) #podemos ver que hasta la componente 4 se conserva un 79.7% de la variabilidad por lo que tomaremos estas 4 componentes para el análisis
+
+data_pc <- as.data.frame(R.CP$x[,1:4])
+```
+
+Primero vamos a hacer el proceso de K-means con las 4 componentes principales que se escogieron.
+
+```{r, message=F, echo=F, include=FALSE,warning=FALSE}
+dataPCK <- data_pc
+dataPCK$k <- kmeans_analysis(data_pc, k=3)
+dataPCK$k <- factor(dataPCK$k, levels = c("1", "2","3"), labels = c("3","2", "1"))
+dataPCK3<- dataPCK
+#Probamos nuevamente a intentar separar en cuatro clusters ahora con las componentes principales y tuvimos un mejor resultado que con los aglomeramientos jerÃ¡rquicos como se puede ver en las siguientes grÃ¡ficas
+dataPCK$k <- kmeans_analysis(data_pc, k=4)
+dataPCK$k <- factor(dataPCK$k, levels = c("1", "2","3","4"), labels = c("4","3","2", "1"))
+dataPCK4<- dataPCK
+```
+
+
+```{r, message=F, echo=F, include=FALSE,warning=FALSE}
+ggpairs(dataPCK3, title="Kmedias CP, Tres Grupos", aes(colour = k))
+
+plot22<-fviz_pca_ind(R.CP, geom.ind = "point", 
+             col.ind = dataPCK3$k, 
+             axes = c(1, 2), 
+             pointsize = 1.5,
+             submain="kmedias CP, Tres Grupos")
+
+ggpairs(dataPCK4, title="Kmedias CP, Cuatro Grupos", aes(colour = k))
+
+plot24<-fviz_pca_ind(R.CP, geom.ind = "point", 
+             col.ind = dataPCK4$k, 
+             axes = c(1, 2), 
+             pointsize = 1.5,
+             submain="kmedias CP, Cuatro Grupos")
+
+grid.arrange(plot22,plot24, ncol=2)
+```
+
+
+```{r, echo=F, include=FALSE,message=FALSE,warning=FALSE}
+#Mostramos los pesos de la componente a continuacion:
+R.CP$rotation[,1] # Cargas de la primera CP
+```
+
+
+Análogamente a los ejercicios anteriores vamos a probar usando clusters jerarquicos y conservando las disimilaridades que se usaron en el caso anterior
+
+```{r jerÃ¡rquicos CP, include=F}
+dataPCH <- data_pc
+
+hclust_analysis(dataPCH, distances, clustDistances)
+```
+
+
+Obtuvimos que los mejores modelos a usar para 3 clusters fueron Euclidean, Minkowski y Ward D2.
+
+```{r Modelos CP, message=F, echo=F, include=FALSE, fig.height=3, fig.width=6}
+hEucD <- hclust(dist(data_pc), method = "ward.D")
+hEucD2 <- hclust(dist(data_pc), method = "ward.D2")
+hMaxD <- hclust(dist(data_pc, method = "maximum"), method = "ward.D")
+hMaxD2 <- hclust(dist(data_pc, method = "maximum"), method = "ward.D2")
+hCanD <- hclust(dist(data_pc, method = "canberra"), method = "ward.D")
+hCanD2 <- hclust(dist(data_pc, method = "canberra"), method = "ward.D2")
+hManD <- hclust(dist(data_pc, method = "manhattan"), method = "ward.D")
+hManD2 <- hclust(dist(data_pc, method = "manhattan"), method = "ward.D2")
+hMinD <- hclust(dist(data_pc, method = "minkowski"), method = "ward.D")
+hMinD2 <- hclust(dist(data_pc, method = "minkowski"), method = "ward.D2")
+
+dataPCH$c <- factor(cutree(hEucD2, 3))
+plot3<-fviz_pca_ind(R.CP, geom.ind = "point", 
+             col.ind = dataPCH$c, 
+             axes = c(1, 2), 
+             pointsize = 1.5,
+             submain="Jerarquico CP, Tres Grupos, Euclidea-Ward D2")
+plot3
+ggpairs(dataPCH, title="Jerarquico CP, Tres Grupos, Euclidea-Ward D2", aes(colour = c))
+```
+
+
+```{r, message=F, echo=F,warning=FALSE,fig.height=2.5, fig.width=6}
+grid.arrange(plot22,plot3, ncol=2)
+```
+
+## Conclusiones
+
+Como pudimos ver a lo largo de todo este análisis y aplicando distintos métodos de evaluación como fue usar K-means, algoritmos de jerarquía y componentes principales decidimos conservar el de Componentes principales ya que ademas de permitirnos conservar las variables que conservan mayor información dadas las originales y así poder reducir el estudio a estas los resultados obtenidos fueron mas cercanos a lo que deseamos, por ejemplo, la clusterizacion que obtuvimos con la primer componente fue mejor, lo mismo pasó para la segunda componente. Hablando en términos mas generales tenemos que el primer grupo tiene mayor promedio en todas las respuestas, seguido por el segundo grupo y por ultimo se queda el tercer grupo.
+
+Finalmente, creemos que el modelo a utilizar para focalizar la publicidad al publico siempre dependerá en gran medida de el numero de la cantidad de publico que quiera alcanzar la empresa y conforme a esto lanzar los distintos tipos de publicidad, ya que nosotros decidimos tomar 3 clasificaciones sobre 2 0 4, esto con el fin de mantener un equilibrio entre las preferencias de todos los clientes que buscan seguridad, puntualidad y un buen trato por parte de los trabajadores, cosas que sin duda son fundamentales para que la empresa logre atraer nuevos clientes potenciales que le den una gran importancia a estos criterios.
+
+
+
+
