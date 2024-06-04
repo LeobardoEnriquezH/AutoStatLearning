@@ -1,0 +1,497 @@
+---
+output:
+  pdf_document:
+    toc: false
+  bookdown::pdf_document2:
+    number_sections: false
+    toc: false
+    highlight: tango
+geometry: margin=2.0cm
+header-includes:
+- \usepackage[spanish]{babel}
+- \usepackage[utf8]{inputenc}
+- \usepackage{amsmath}
+- \decimalpoint
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls(all.names = TRUE))
+
+knitr::opts_chunk$set(
+	echo = FALSE,
+	fig.align = "center",
+	#fig.dim = c(6.0, 5.0),
+	fig.pos = "H",
+	message = FALSE,
+	warning = FALSE,
+	error = F)
+
+library(mlbench)
+library(GGally)
+library(metrica)
+library(MASS)
+library(glmnet)
+library(bestglm)
+library(e1071)
+library(data.table)
+library(kableExtra)
+library(ggplot2)
+library(boot)
+library (ISLR)
+library(caret)
+library(stargazer)
+```
+
+# 2. Clasificación supervisada
+
+
+En el conjunto de datos ``PimaIndiansDiabetes2`` de la biblioteca ``mlbench``, sin considerar NA´s, tenemos la variable ``diabetes`` con 2 grupos para hacer el estudio,  estos son  "pos" y "neg" que indican que la persona tiene diabetes y que no tiene, respectivamente. Tenemos 262 "neg" y 130 "pos", lo cual nos indica que es mayor el número de personas que no tiene diabetes. En el siguiente Cuadro, mostramos algunas estadísticas descriptivas de las variables numéricas del conjunto de datos, tales como pregnant, glucose, pressure, triceps, insulin, mass, pedigree y age.  
+
+```{r descriptivo, echo=FALSE, include=FALSE}
+# analisis descrptivo de los datos 
+data("PimaIndiansDiabetes2", package = "mlbench")
+
+# ya que cargamos los datos nombraremos una nueva variable para ver si tiene na´s
+bd <- PimaIndiansDiabetes2[complete.cases(PimaIndiansDiabetes2), ]
+
+!any(is.na(PimaIndiansDiabetes2))# no se tienen na´s en los datos, sigamos con el análisis
+
+#summary(bd)
+```
+
+```{r, echo=FALSE,include=FALSE}
+#stargazer(bd)
+```
+
+
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\footnotesize
+\begin{tabular}{@{\extracolsep{5pt}}lccccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+Statistic & \multicolumn{1}{c}{N} & \multicolumn{1}{c}{Mean} & \multicolumn{1}{c}{St. Dev.} & \multicolumn{1}{c}{Min} & \multicolumn{1}{c}{Max} \\ 
+\hline \\[-1.8ex] 
+pregnant & 392 & 3.301 & 3.211 & 0 & 17 \\ 
+glucose & 392 & 122.628 & 30.861 & 56 & 198 \\ 
+pressure & 392 & 70.663 & 12.496 & 24 & 110 \\ 
+triceps & 392 & 29.145 & 10.516 & 7 & 63 \\ 
+insulin & 392 & 156.056 & 118.842 & 14 & 846 \\ 
+mass & 392 & 33.086 & 7.028 & 18.200 & 67.100 \\ 
+pedigree & 392 & 0.523 & 0.345 & 0.085 & 2.420 \\ 
+age & 392 & 30.865 & 10.201 & 21 & 81 \\ 
+\hline \\[-1.8ex] 
+\end{tabular} 
+\end{table} 
+
+
+Por otra parte, en la siguiente Figura podemos notar en los BoxPlot que las medianas  de las variables numéricas para las personas que si tienen diabetes son mas altas, ademas este grupo presenta mas variabilidad o dispersión y sesgo a la derecha de acuerdo con las densidades. Es natural ver que el número de veces que se ha estado embarazada (pregmant) está positivamente correlacionado con la edad, y que a mayor índice de masa corporal (mass) mayor es el grosor de los triceps.  
+
+
+```{r,fig.cap= "Variables predictoras por grupos de respuesta", fig.height=6.5, fig.width=9}
+ggpairs(bd,mapping = aes(color = diabetes), upper = list(continuous = wrap("cor", size = 3)))
+```
+
+
+
+
+Lo que sigue es obtener las componentes principales con el fin de obtener un mejor modelo y que ademas nos servirá para desechar variables que no aporten tanta información al mismo. Ya que se obtuvieron las componentes principales obtuvimos lo siguiente:
+
+
+
+```{r, include=FALSE}
+#obtenemos las componentes principales y quitamos la variable que nos interesa que es "diabetes"
+comp_prin = prcomp(bd[,-9], scale = TRUE)
+
+summary(comp_prin)
+options(digits=2)
+
+correlacion <- cor(cbind(comp_prin$x[,1:4],(bd[,-9]))) #veamos como se ve la correlación de las componentes con las variables originales, para eso es esto
+
+#corrplot::corrplot(correlacion, cex = 1.2, main = "Matriz de correlación") #matriz de correlacion entre componentes y variables originales
+```
+
+
+
+Hasta la componente 4 conserva un 78% de variabilidad de los datos originales por lo que usaremos estas para el análisis, ademas veremos la correlación que tiene cada componente con las variables originales.
+
+Para el caso de la componente 1 obtuvimos que las variables con las que esta mas correlacionada son glucose, triceps y age, arriba de 0.6 para los 3 casos.
+
+Luego para la segunda componente se obtuvo que las variables con las que esta mas correlacionada son pregnant y age, aunque en este caso la correlación es negativa, de ahí se tiene que con mayor correlación positiva se encuentran mass y pedigree.
+
+Con la tercer componente se tiene que las variables con las que esta mas correlacionada fueron glucose e insuline.
+
+Por ultimo la cuarta componente esta mas correlacionada con pedigree.
+
+
+
+```{r  fig.cap="Componentes principales por grupos ", include=TRUE}
+#Diagramas de dispersiÃ³n de CP por los grupos a clasificar
+
+par(mfrow = c(2,2)) #define cantidad renglones y columnas
+par(mar = c(4, 5, 3, 1))
+
+plot(comp_prin$x[, 1], comp_prin$x[, 2], 
+     col = ifelse(bd$diabetes == "neg", "firebrick", "steelblue"), 
+     pch = 8, 
+     xlab = "CP 1", ylab = "CP 2")
+legend("topright", legend = levels(bd$diabetes), 
+       col = c("firebrick", "steelblue"), pch = 16, title = "Diabetes")
+
+plot(comp_prin$x[, 1], comp_prin$x[, 3], 
+     col = ifelse(bd$diabetes == "neg", "orange4", "green4"), 
+     pch = 8,
+     xlab = "CP 1", ylab = "CP 3")
+legend("topright", legend = levels(bd$diabetes), 
+       col = c("orange4", "green4"), pch = 16, title = "Diabetes")
+
+plot(comp_prin$x[, 1], comp_prin$x[, 4], 
+     col = ifelse(bd$diabetes == "neg", "seagreen", "#7A378B"),
+     pch = 8, 
+     xlab = "CP 1", ylab = "CP 4")
+legend("topright", legend = levels(bd$diabetes), 
+       col = c("seagreen", "#7A378B"), pch = 16, title = "Diabetes")
+
+plot(comp_prin$x[, 3], comp_prin$x[, 4], 
+     col = ifelse(bd$diabetes == "neg", "indianred", "#4A708B"), 
+     pch = 8, 
+     xlab = "CP 3", ylab = "CP 4")
+legend("topright", legend = levels(bd$diabetes), 
+       col = c("indianred", "#4A708B"), pch = 16, title = "Diabetes")
+
+```
+
+Pasando a los modelos se decidió que se ajustaran los siguientes:
+
+1.Regresión logit con efectos principales
+
+2.Regresión logit con interacciones, variables al cuadrado y selección de variables con el método del mejor subconjunto.
+
+3.Regresión logit con selección de variables y el método por pasos both.
+
+4.Regresión logit con interacciones, variables al cuadrado, selección lasso con lambda tuneado.
+
+5.Naive classifier, LDA, QDA, KNN.
+
+6.Random Forest con 200 arboles tuneado.
+
+
+```{r modelo 1, include=FALSE}
+
+K=5
+n=dim(bd)[1]
+(labK=rep(1:K, length.out = n))
+table(labK)
+set.seed(340)#hacemos que el proceso sea reproducible
+(Pliegues <- sample(labK)) 
+
+
+mod1 = function(x, Plie, Dat){
+  train <- which(Plie != x)  
+  test = (-train) #Hacemos la division sobre los pliegues
+  modtr=glm(diabetes ~ ., data=Dat[train,],   family=binomial(link="logit")) #efectos principales
+  preda=predict(modtr, newdata = Dat[test,], type = "response") #Hacemos las predicciones 
+  predb=ifelse(preda>=.5,levels( Dat$diabetes)[2],levels( Dat$diabetes)[1])#regla 
+  resPod=metrics_summary(obs = Dat[test,"diabetes"], pred = predb, metrics_list=c("accuracy", "recall", "specificity"),type = 'classification') #metricas que vamos a estar usando
+  return(resPod[,2])
+}
+set.seed(340) #Proceso aleatorio 
+K.mod1= sapply(1:K,mod1, Plie = Pliegues, Dat=bd)
+#summary(K.mod1)
+
+#Estimacion poder predictivo 
+PP_fit_ep = rowMeans(K.mod1) #sacamos la media
+PP_fit_ep
+
+
+### veamos que nos dice la regla para este primer modelo 
+best_leaps <- regsubsets(diabetes ~ ., data = bd, nvmax=15)
+subconjuntos2=summary(best_leaps)
+
+combine <- cbind(subconjuntos2$which,subconjuntos2$bic)
+ndim=dim(subconjuntos2$which)
+ms1= round(combine, digits=3)
+best_model_index <- which.min(ms1[,ncol(ms1)])
+
+# obtenemos las variables para trabajar
+n1=names(coef(best_leaps, best_model_index))[-1]
+forexp1 = as.formula(  paste('diabetes ~', paste(paste(n1 ,collapse = ' + ')  ) )) 
+forexp1  #Para ajustar la regresion 
+
+fitB_ep_ms <- glm(forexp1, family = binomial(link="logit"), data=bd)
+summary(fitB_ep_ms)
+```
+
+```{r modelo 2, include=FALSE}
+#segundo modelo
+
+mod2KCV=function(x, Plie, Dat){
+  train <- which(Plie != x) #conjunto de entrenamiento
+  test = (-train) #conjunto de test
+  ms = regsubsets(diabetes ~ .^2, data = Dat[train,], nvmax = 35)#seleccionamos usando el mejor subconjunto de variables
+  mss = summary(ms) #variable para guardar el modelo con menor BIC
+  mat <- cbind(mss$which, mss$bic) 
+  ndim = dim(mss$wich) 
+  ms1= round(mat, digits = 3)
+  indice <- which.min(ms1[,ncol(ms1)])  #Seleccionamos el indice del mejor 
+  name = names(coef(ms, indice))[-1] #Eliminamos el intercepto 
+  forexp=as.formula(  paste('diabetes ~ ', paste(paste(name ,collapse = ' + ')  ) ))  #Ajustamos la formula a usar 
+  modtr=glm(forexp, data=Dat[train,],   family=binomial(link="logit")) #Ajustamos el modelo a entrenar 
+  preda=predict(modtr, newdata = Dat[test,], type = "response") #Predecimos test
+  predb=ifelse(preda>=.5,levels( Dat$diabetes)[2],levels( Dat$diabetes)[1]) #Ajustamos la regla
+  resPod=metrics_summary(obs = Dat[test,"diabetes"], pred = predb, metrics_list=c("accuracy", "recall", "specificity"),type = 'classification') #Calculamos las metricas que usaremos como en el modelo 1
+  return(resPod[,2])
+}
+set.seed(340)
+K.mod2 = sapply(1:K,mod2KCV, Plie=Pliegues, Dat=bd)
+summary(K.mod2)
+
+#Estimacion del  predictivo 
+PP_fit_ms = rowMeans(K.mod2)
+PP_fit_ms
+#[1] 0.7704317 0.5537023 0.8809618
+
+#Regla usada 
+fitB_ep <- glm(diabetes ~ ., family = binomial(link="logit"), data = bd) #Efectos principales 
+pen=log(dim(bd)[1])
+mod1_EP <- stepAIC(fitB_ep, scope =list(upper = ~., lower = ~1), trace =FALSE,direction="both", k=pen)
+summary(mod1_EP) # modelo con el que se calculan probabilidades
+fitB_ep <- glm(diabetes ~ ., family = binomial(link="logit"), data=bd) #principales
+summary(fitB_ep)
+```
+
+
+
+```{r modelo 3, include=FALSE}
+
+mod3KCV=function(x, Plie, Dat){
+  train <- which(Plie != x)
+  test = (-train)
+  modcompleto = glm(diabetes ~ ., data=Dat[train,],   family=binomial(link="logit"))
+  pen=log(dim(Dat[train,])[1])
+  modtr=stepAIC(modcompleto,scope = list(upper = ~., lower = ~1), trace=FALSE,direction="both",   k=pen)
+  preda=predict(modtr, newdata = Dat[test,], type = "response")
+  predb=ifelse(preda>=.5,levels( Dat$diabetes)[2],levels( Dat$diabetes)[1])
+  resPod=metrics_summary(obs = Dat[test,"diabetes"], pred = predb, metrics_list=c("accuracy", "recall", "specificity"),type = 'classification')
+  return(resPod[,2])
+}
+set.seed(340)
+K.mod3 = sapply(1:K,mod3KCV, Plie=Pliegues, Dat=bd)
+summary(K.mod3)
+
+#Estimacion poder predictivo 
+PP_fit_both = rowMeans(K.mod3)
+PP_fit_both
+
+mod_n <- glm(diabetes ~ 1, data = bd,   family=binomial(link="logit")) 
+summary(mod_n)
+```
+
+
+```{r modelo 4, include=FALSE}
+#Ajuste del modelo lasso
+Xmod6 <- model.matrix(forexp1, data=bd)[,-1] #Matriz sin intercepto(beta_0)
+Ymod6 <- bd[,"diabetes"] 
+
+set.seed(340)
+mod_lasso_tun = cv.glmnet(Xmod6, Ymod6, nfolds = 5, type.measure ="class", gamma = 0, relax = FALSE, family = "binomial", nlambda = 50)
+mod_lasso_tun$lambda.min  
+#predict(mod3.lasso.tun, newx = Xmod4[1:5,], type = "response", s = "lambda.min") #regla final
+
+
+###Ahora poder predictivo 
+mod4KCV=function(x, Plie, Dat){
+  train <- which(Plie != x)
+  test = (-train)
+  Xmodt <- model.matrix(forexp1, data=Dat)[,-1] 
+  Xmod <- Xmodt[train,]
+  Ymod <- Dat[train, "diabetes"]
+  modtr=cv.glmnet(Xmod, Ymod, nfolds = 5, type.measure ="class", gamma = 0, relax = FALSE, family = "binomial", nlambda = 50)
+  preda = predict(modtr, newx = Xmodt[test,], type = "response", s = "lambda.min")
+  predb=ifelse(preda>=.5,levels( Dat$diabetes)[2],levels( Dat$diabetes)[1])
+  resPod=metrics_summary(obs = Dat[test,"diabetes"], pred = predb, metrics_list=c("accuracy", "recall", "specificity"),type = 'classification')
+  return(resPod[,2])
+}
+
+K.mod4 = sapply(1:K,mod4KCV, Plie = Pliegues, Dat = bd)
+summary(K.mod4)
+
+#Estimacion poder predictivo 
+PP_fit_lasso = rowMeans(K.mod4)
+PP_fit_lasso
+```
+
+```{r modelo 5, include=FALSE}
+
+mod5KCV=function(x, Plie, Dat){
+  train <- which(Plie != x)
+  test = (-train)
+  modtr= naiveBayes(diabetes ~ ., Dat[train,])
+  preda=predict(modtr, newdata = Dat[test,])
+  resPod=metrics_summary(obs = Dat[test,"diabetes"], pred = preda, metrics_list=c("accuracy", "recall", "specificity"), type = 'classification')
+  return(resPod[,2])
+}
+set.seed(340)
+K.mod5 = sapply(1:K,mod5KCV, Plie=Pliegues, Dat = bd)
+summary(K.mod5)
+
+#Estimacion poder predictivo 
+PP_fit_naive = rowMeans(K.mod5)
+PP_fit_naive
+# c("accuracy", "recall", "specificity")
+# 0.7704317 0.6339201 0.8352041
+```
+
+
+```{r LDA, include=FALSE}
+#Poder predictivo
+mod6KCV <- function(x, Plie, Dat) {
+  train <- which(Plie != x)
+  test <- -train
+  modtr <- lda(diabetes ~ ., data = Dat[train, ])
+  preda <- predict(modtr, newdata = Dat[test, ])
+  predb <- preda$class #asisna a la clase de mayor probabilidad
+  resPod <- metrics_summary(
+    obs = Dat[test, "diabetes"],
+    pred = predb,
+    metrics_list = c("accuracy", "recall", "specificity"),
+    type = 'classification'
+  )
+  
+  return(resPod[, 2])
+}
+
+set.seed(340)
+K.mod6 <- sapply(1:K, mod6KCV, Plie = Pliegues, Dat = bd)
+
+
+#Estimacion poder predictivo 
+PP_fit_lda = rowMeans(K.mod6)
+PP_fit_lda
+# c("accuracy", "recall", "specificity")
+# 0.7703668 0.5397655 0.8813303
+```
+
+```{r modelo QDA, include=FALSE}
+mod7KCV <- function(x, Plie, Dat) {
+  train <- which(Plie != x)
+  test <- -train
+  
+  # AsegÃºrate de que 'diabetes' estÃ© presente en Dat
+  modtr <- qda(diabetes ~ ., data = Dat[train, ])
+  preda <- predict(modtr, newdata = Dat[test, ])
+  predb <- preda$class #Asigna a la clase de mayor proba
+  resPod <- metrics_summary(
+    obs = Dat[test, "diabetes"],
+    pred = predb,
+    metrics_list = c("accuracy", "recall", "specificity"),
+    type = 'classification'
+  )
+  
+  return(resPod[, 2])
+}
+
+set.seed(340)
+K.mod7 <- sapply(1:K, mod7KCV, Plie = Pliegues, Dat = bd)
+
+
+#Estimacion poder predictivo 
+PP_fit_qda = rowMeans(K.mod7)
+PP_fit_qda
+```
+
+```{r KNN, include=FALSE}
+
+library(class)
+mod8KCV=function(x, Plie, Dat){
+  train <- which(Plie != x)
+  test = (-train)
+  Xmod10ttotal = model.matrix(diabetes~ ., data=Dat)[,-1]
+  Xmod10t = Xmod10ttotal[train, ]
+  Xmod10test = Xmod10ttotal[test, ]
+  Ymod10t = Dat[train,"diabetes"]
+  knn.crosst <- tune.knn(x = Xmod10t, y = Ymod10t, k = 1:20,tunecontrol=tune.control(sampling = "cross"), cross=5)
+  predb=knn(train=Xmod10t, test=Xmod10test, Ymod10t, k = knn.crosst$best.parameters[[1]], use.all = TRUE)
+  resPod=metrics_summary(obs = Dat[test,"diabetes"], pred = predb, metrics_list=c("accuracy", "recall", "specificity"),type = 'classification')
+  return(resPod[,2])
+}
+
+set.seed(340)
+K.mod8 <- sapply(1:K, mod8KCV, Plie = Pliegues, Dat = bd)
+
+#Estimacion poder predictivo 
+PP_fit_Knn = rowMeans(K.mod8)
+PP_fit_Knn
+# c("accuracy", "recall", "specificity")
+#  [1] 0.74 0.49 0.87
+
+```
+
+```{r random forest, include=FALSE}
+library(randomForest)
+
+mallamtry=seq(1,13,2)# Para tunear mtry 
+
+mod9KCV=function(x, Plie, Dat){
+  train <- which(Plie != x)
+  test = (-train)
+  tunRFt5CV=tune.randomForest(diabetes ~ .,data=Dat[train,],importance = F, mtry=mallamtry, ntree = 200, tunecontrol = tune.control(sampling = "cross", cross = 5))
+  RFt=randomForest(diabetes ~ ., data = Dat[train,], mtry = tunRFt5CV$best.parameters[[2]], importance = F,
+                       ntree = 200)
+  predb=predict(RFt,newdata=Dat[test,], type="class")
+  resPod=metrics_summary(obs = Dat[test,"diabetes"], pred = predb, metrics_list=c("accuracy", "recall", "specificity"),type = 'classification')
+  return(resPod[,2])
+}
+
+set.seed(340)
+K.mod9 <- sapply(1:K, mod9KCV, Plie = Pliegues, Dat = bd)
+
+
+#Estimacion poder predictivo 
+PP_fit_RF = rowMeans(K.mod9)
+PP_fit_RF
+# c("accuracy", "recall", "specificity")
+# [1] 0.7449854 0.5487709 0.8478364
+```
+
+```{r tabla resumen, include=FALSE}
+table_resume <- data.frame("Modelo" = c("Regresión logit con efectos principales.","Regresión logit con interacciones variables al cuadrado, y selección de variables con el método del mejor subconjunto.","Regresión logit con selección de variables y el método por pasos both.","Regresión logit con interacciones variables al cuadrado selección lasso con lambda tuneado.","Naive classifier","LDA","QDA","KNN","Random Forest con 200 arboles tuneado."),
+                           "accuracy" = c("0.768","0.77","0.773","0.775","0.77","0.77","0.758","0.745","0.745"),
+                           "recall" = c("0.546","0.554","0.556","0.535","0.634","0.54","0.58","0.487","0.549"),
+  "specificity" = c("0.875","0.881","0.877","0.892","0.835","0.881","0.844","0.871","0.848"))
+```
+
+
+```{r presentacion tabla}
+table_resume%>%
+  kbl(booktabs = TRUE, align = "c", caption = "Entrenamientos") %>%
+  kable_styling(latex_options = c("hold_position")) %>%
+  row_spec(0:9, background = "white" ) %>%
+  row_spec(0, color = "black") %>% 
+  column_spec(1:3, width = "5cm")
+  
+```
+
+
+De los resultados obtenidos por cada modelo registrado en la tabla con sus métricas correspondientes podemos decir que en términos de "accuracy" o precisión el modelo con mayor puntuación fue el modelo de regresión logit con interacciones, variables al cuadrado y selección lasso con lambda tuneado con un valor de 0.775, sin embargo si observamos la tabla también existen otros 2 modelos que tuvieron una muy buena puntuación y que no se quedan tan atrás del modelo lasso, por ejemplo, el modelo en el que se uso selección de variables y método por pasos both obtuvo un valor en la métrica "accuracy" de 0.773 el cual esta muy cercano al valor registrado para el método lasso.No obstante dado que en la base de datos y gracias al análisis descriptivo que se hizo al comienzo notamos que existen mas valores clasificados en la categoría de negativos por lo que usar la métrica "acurracy" traería problemas al momento de clasificar, por otra parte el modelo lasso siguió siendo el mejor puntuado en la métrica "specificity" con un valor de 0.89, en este aspecto si lo que se busca es reducir la cantidad de falsos negativos este modelo nos sera de mucha ayuda ya que en dado caso de tener nuevas observaciones que sean clasificadas en la categoría negativo tendremos una buena clasificación.
+
+
+Para el caso de la métrica "recall" tenemos como mejor modelo el "Naive classifier" con un valor de 0.634.
+
+De todos los modelos aquí presentados algo que notamos es que los coeficientes que mayor efecto tuvieron en el diagnostico de la diabetes fueron pedigree, glucosa, insulina y edad, lo cual nos hace bastante sentido ya que es bien sabido en el ámbito medico que la genética siempre va a ser un factor determinante en el desarrollo de ciertas enfermedades de distinta índole no solamente hablando de desarrollar diabetes, adicionalmente a la genética el nivel de insulina en cada persona y su edad son otros factores que influyen directamente en el desarrollo de diabetes incluso seria interesante ver como influiría el genero de una persona para el desarrollo o no de esta enfermedad. 
+
+
+
+
+
+
+
+
+
+
+
+
+

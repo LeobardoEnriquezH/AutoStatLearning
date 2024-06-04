@@ -1,0 +1,160 @@
+---
+output:
+  pdf_document:
+    toc: false
+  bookdown::pdf_document2:
+    number_sections: false
+    toc: false
+    highlight: tango
+geometry: margin=2.0cm
+header-includes:
+- \usepackage[spanish]{babel}
+- \usepackage[utf8]{inputenc}
+- \usepackage{amsmath}
+- \decimalpoint
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls(all.names = TRUE))
+
+knitr::opts_chunk$set(
+	echo = FALSE,
+	fig.align = "center",
+	#fig.dim = c(6.0, 5.0),
+	fig.pos = "H",
+	message = FALSE,
+	warning = FALSE,
+	error = F)
+
+library(mlbench)
+library(GGally)
+library(metrica)
+library(MASS)
+library(glmnet)
+library(bestglm)
+library(e1071)
+library(data.table)
+library(kableExtra)
+library(ggplot2)
+library(boot)
+library (ISLR)
+library(caret)
+library(stargazer)
+library(faraway)
+library(tidyverse)
+library(caret)
+```
+
+# 1. Predicción en el caso continuo
+
+Consideraremos el conjunto de variables clínicas ``fat`` de la biblioteca ``faraway``, omitimos variables como siri, density y
+free, y quitamos valores atípicos en weight y height, y valores nulos en brozek. Con esto nos quedamos con 248 observaciones de los 252, y con 15 variables incluyendo nuestra variable de interés para el estudio cuyo objetivo es predecir el porcentaje de grasa corporal en los hombres (brozek).
+
+
+```{r, echo=FALSE}
+#Cargamos la base y quitamos siri, density y free, ademas quitamos ceros de brozek
+fat<-faraway::fat
+fat<-subset(fat, select = -c(siri, density, free) )
+fat<-filter(fat, brozek>0)
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+#Boxplot para ver los outliers para weight
+out_weight <- boxplot.stats(fat$weight)$out
+boxplot(fat$weight,
+  ylab = "lbs",
+  main = "Weight"
+)
+mtext(paste("Outliers: ", paste(out_weight, collapse = ", ")))
+
+#Boxplot para ver los outliers para height
+out_height <- boxplot.stats(fat$height)$out
+boxplot(fat$height,
+  ylab = "inches",
+  main = "Height"
+)
+mtext(paste("Outliers: ", paste(out_height, collapse = ", ")))
+```
+
+
+```{r, echo=FALSE}
+#Quitamos los outliers
+fat<-filter(fat, weight!=363.15)
+fat<-filter(fat, weight!=262.75)
+fat<-filter(fat, height!=29.5)
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+#Graficamos Boxplots para ver que ya no tenemos outliers
+out_weight <- boxplot.stats(fat$weight)$out
+boxplot(fat$weight,
+  ylab = "lbs",
+  main = "Weight"
+)
+mtext(paste("Outliers: ", paste(out_weight, collapse = ", ")))
+
+out_height <- boxplot.stats(fat$height)$out
+boxplot(fat$height,
+  ylab = "inches",
+  main = "Height"
+)
+mtext(paste("Outliers: ", paste(out_height, collapse = ", ")))
+```
+
+
+Plantearemos varios modelos predictivos con variable continua, en este caso el procentaje de grasa corporal (brozek), a partir de variables clínicas. Compararemos el poder predictivo para varias reglas de regresión lineal general, con el modelo gausiano y liga identidad. Exploraremos  efectos principales, interacciones y términos cuadrados de las variables.  
+
+
+```{r, echo=FALSE}
+# Por simplicidad se usará:
+# Repeated holdout method
+# B=50, train (80%) y test (20%)
+# y cálculo del MSE como medida de poder predictivo
+# La partición se realizará con caret y 
+# será la misma para todos los modelos
+library(caret)
+set.seed(1)
+B=50
+Partition<- createDataPartition(fat$brozek, p = .80, groups =4, list = FALSE, times = B)
+```
+
+
+
+```{r, echo=FALSE}
+#Primero modelo: efectos principales
+# Descripción del método de entrenamiento y regla final
+
+# Creamos la matriz de diseño X y la variable de respuesta y
+X <- model.matrix(object = brozek ~ ., data = fat)
+Y <- fat$brozek
+
+mod1=lm(brozek ~ ., fat)
+summary(mod1)  # regla final, la que se usaría en producción
+```
+
+
+```{r, echo=FALSE}
+##
+# Medición del poder predictivo de la regla final
+
+mod1RHM=function(x, IndTrain, Dat){
+  train= IndTrain[,x]
+  test = (-train)
+  modtr=lm(brozek ~ ., Dat[train,])
+  predte=predict(modtr, Dat[test,])
+  MSE=mean((Dat$Salary[test]-predte)^2)
+  return(MSE)
+}
+
+MSE.B.mod1= sapply(1:B,mod1RHM, IndTrain=Partition, Dat=fat)
+(MSE.RHM.mod1=mean(MSE.B.mod1))
+#[1] 118964.9
+```
+
+
+
+
