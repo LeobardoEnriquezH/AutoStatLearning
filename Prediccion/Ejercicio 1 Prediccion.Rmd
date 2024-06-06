@@ -1,160 +1,576 @@
 ---
+title: "1. Predicción en el caso continuo"
 output:
-  pdf_document:
-    toc: false
-  bookdown::pdf_document2:
-    number_sections: false
-    toc: false
-    highlight: tango
-geometry: margin=2.0cm
-header-includes:
-- \usepackage[spanish]{babel}
-- \usepackage[utf8]{inputenc}
-- \usepackage{amsmath}
-- \decimalpoint
-urlcolor: blue
+  pdf_document: default
+  html_document: default
+geometry: top=0.5in, bottom=0.5in, left=0.9in, right=0.9in
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(include = FALSE)
+#Empezamos limpiando nuestro ambiente
 rm(list = ls(all.names = TRUE))
 
-knitr::opts_chunk$set(
-	echo = FALSE,
-	fig.align = "center",
-	#fig.dim = c(6.0, 5.0),
-	fig.pos = "H",
-	message = FALSE,
-	warning = FALSE,
-	error = F)
 
-library(mlbench)
-library(GGally)
-library(metrica)
+
+#Elegimos nuestra carpeta
+#setwd("C:/Users/")
+
+# Librerías
+library (ISLR)
+library(boot)
+library(cvTools) #Repeated K-CV
+library(caret)
+library(faraway)
 library(MASS)
 library(glmnet)
-library(bestglm)
-library(e1071)
-library(data.table)
+library(tibble)
 library(kableExtra)
-library(ggplot2)
-library(boot)
-library (ISLR)
-library(caret)
-library(stargazer)
-library(faraway)
-library(tidyverse)
-library(caret)
 ```
 
-# 1. Predicción en el caso continuo
+Considere la base de datos "fat" del paquete faraway, todas las variables, excepto siri, density y free. También eliminé del análisis los casos con valores extraños en weight y height, así como valores cero en brozek. Suponga que el objetivo del estudio es usar las variables clínicas observadas en los pacientes para predecir el porcentaje de grasa corporal en los hombres (var brozek).
 
-Consideraremos el conjunto de variables clínicas ``fat`` de la biblioteca ``faraway``, omitimos variables como siri, density y
-free, y quitamos valores atípicos en weight y height, y valores nulos en brozek. Con esto nos quedamos con 248 observaciones de los 252, y con 15 variables incluyendo nuestra variable de interés para el estudio cuyo objetivo es predecir el porcentaje de grasa corporal en los hombres (brozek).
+Mediante el summary se verificó y eliminaron datos que parecían atípicos, veáse en el chunk "datos_raros". Quedandonós así con 247 observaciones y 15 columnas.
 
-
-```{r, echo=FALSE}
-#Cargamos la base y quitamos siri, density y free, ademas quitamos ceros de brozek
-fat<-faraway::fat
-fat<-subset(fat, select = -c(siri, density, free) )
-fat<-filter(fat, brozek>0)
+```{r datos, include=FALSE}
+# Datos
+# peso en libras
+# altura en pulgadas
+fatt=fat[, !names(fat) %in% c("siri", "density", "free")]
+fat2=fatt[fatt$brozek>0,]
 ```
 
+```{r datos_raros, include=FALSE}
+summary(fat2$height)
+# registro 42, peso 92 kl y 74 cm de altura
+indice1 <- which(fat2$height == 29.50)
 
-```{r, echo=FALSE, include=FALSE}
-#Boxplot para ver los outliers para weight
-out_weight <- boxplot.stats(fat$weight)$out
-boxplot(fat$weight,
-  ylab = "lbs",
-  main = "Weight"
-)
-mtext(paste("Outliers: ", paste(out_weight, collapse = ", ")))
+summary(fat2$weight)
+# registro 39, peso 164 kl y 183 cm de altura
+indice2 <- which(fat2$weight == 363.15)
 
-#Boxplot para ver los outliers para height
-out_height <- boxplot.stats(fat$height)$out
-boxplot(fat$height,
-  ylab = "inches",
-  main = "Height"
-)
-mtext(paste("Outliers: ", paste(out_height, collapse = ", ")))
+# eliminar datos
+fat2 = fat2[-c(39,42),]
 ```
 
+Tras revisar la base se procedio a realizar la predicción en sus dos etapas, recopilando la información de estas en la siguiente tabla con las siguientes columnas
 
-```{r, echo=FALSE}
-#Quitamos los outliers
-fat<-filter(fat, weight!=363.15)
-fat<-filter(fat, weight!=262.75)
-fat<-filter(fat, height!=29.5)
+**REGLA:** En todos los casos se usaron MLG para datos continuos, en los 9 primeros se uso una liga identidad y distribución Gaussiana, mintras que en el 10 fue una liga inversa con distribución Gamma, es decir su liga canónica. Los últimos cuatro modelos.
+
+**SELECCIÓN**: Aquí se especifíca el método o criterio mediante el cuál se hizo la selección de variables para cada una una de las reglas. En los primeros tres no se uso ningún método de selección, en los siguientes tres se utilizó optimización discreta mediante BIC y para los últimos cuatro se seleccionaron mediante lasso, en estos para poder determinar el valor óptimo de lambda, es decir del hiperparámetro, se usó el método de remuestreo K-CV con k=5.
+
+**VARIABLES:** Las covariables involucradas en cada una de las regresiones.
+
+Para poder determinar el poder predictivo de estas reglas se tomaron como parámetros las siguientes tres métricas, calculadas bajo el método de remuestreo "Repeated Holdout Method" (RHM) con B=50. Cabe mencionar que en los modelos donde se hizo uso de lasso, al tener un hiperparámetro entonces tenemos el uso de remuestreo anidado, una primera vez para el calculo del hiperparámetro óptimo, el cual fue calculado bajo K-CV con k=5 y el segundo, para medir el poder predictivo como el resto de modelos mediante RHM.
+
+**MSE:** Criterio para el poder predictivo, error cuadrático medio
+
+**MAE:** Criterio para el poder predictivo, media de la diferencia en valor absoluto
+
+**CORR:** Criterio para el poder predictivo, coeficiente de correlación al cuadrado entre "y" y "y_gorrito"
+
+```{r elementos, include=FALSE}
+# Matriz diseño x
+xnames = names(fat2)
+# Vector de y
+ynames = fat2$brozek
 ```
 
+```{r elementos_glm, include=FALSE}
+# efectos principales
+glm1=glm(brozek ~ ., data=fat2, family=gaussian(link="identity"))
 
-```{r, echo=FALSE, include=FALSE}
-#Graficamos Boxplots para ver que ya no tenemos outliers
-out_weight <- boxplot.stats(fat$weight)$out
-boxplot(fat$weight,
-  ylab = "lbs",
-  main = "Weight"
-)
-mtext(paste("Outliers: ", paste(out_weight, collapse = ", ")))
+# efectos + interacciones (de segundo orden)
+glm2=glm(brozek ~ .^2, data=fat2, family=gaussian(link="identity")) 
 
-out_height <- boxplot.stats(fat$height)$out
-boxplot(fat$height,
-  ylab = "inches",
-  main = "Height"
-)
-mtext(paste("Outliers: ", paste(out_height, collapse = ", ")))
+# efectos + variables al cuadrado
+forexp=as.formula(  paste('brozek ~.',"+", paste(paste('I(',xnames,'^2)',collapse = ' + ')  ) )) 
+# Ajustar el modelo
+glm3 <- glm(forexp, data=fat2, family=gaussian(link="identity"))
 ```
 
-
-Plantearemos varios modelos predictivos con variable continua, en este caso el procentaje de grasa corporal (brozek), a partir de variables clínicas. Compararemos el poder predictivo para varias reglas de regresión lineal general, con el modelo gausiano y liga identidad. Exploraremos  efectos principales, interacciones y términos cuadrados de las variables.  
-
-
-```{r, echo=FALSE}
-# Por simplicidad se usará:
-# Repeated holdout method
-# B=50, train (80%) y test (20%)
-# y cálculo del MSE como medida de poder predictivo
-# La partición se realizará con caret y 
-# será la misma para todos los modelos
-library(caret)
-set.seed(1)
+```{r poderp_glm, include=FALSE}
+# semilla y repeticiones para poder predictivo
+set.seed(123)
 B=50
-Partition<- createDataPartition(fat$brozek, p = .80, groups =4, list = FALSE, times = B)
-```
+Partition<- createDataPartition(fat2$brozek, p = .80, groups =4, list = FALSE, times = B)
 
-
-
-```{r, echo=FALSE}
-#Primero modelo: efectos principales
-# Descripción del método de entrenamiento y regla final
-
-# Creamos la matriz de diseño X y la variable de respuesta y
-X <- model.matrix(object = brozek ~ ., data = fat)
-Y <- fat$brozek
-
-mod1=lm(brozek ~ ., fat)
-summary(mod1)  # regla final, la que se usaría en producción
-```
-
-
-```{r, echo=FALSE}
-##
-# Medición del poder predictivo de la regla final
-
-mod1RHM=function(x, IndTrain, Dat){
+#glm1
+mod1=function(x, IndTrain, Dat){
   train= IndTrain[,x]
   test = (-train)
-  modtr=lm(brozek ~ ., Dat[train,])
+  modtr=glm(brozek ~ ., data=fat2[train,], family=gaussian(link="identity"))
   predte=predict(modtr, Dat[test,])
-  MSE=mean((Dat$Salary[test]-predte)^2)
-  return(MSE)
+  MSE=mean((Dat$brozek[test]-predte)^2)
+  MAE=mean(abs(Dat$brozek[test]-predte))
+  Correlacion = cor(Dat$brozek[test],predte)
+  return(c(MSE,MAE,Correlacion))
 }
 
-MSE.B.mod1= sapply(1:B,mod1RHM, IndTrain=Partition, Dat=fat)
-(MSE.RHM.mod1=mean(MSE.B.mod1))
-#[1] 118964.9
+glm1_pp = sapply(1:B,mod1, IndTrain=Partition, Dat=fat2)
+mean(glm1_pp[1])
+mean(glm1_pp[2])
+mean(glm1_pp[3])
+
+#glm2
+mod2=function(x, IndTrain, Dat){
+  train= IndTrain[,x]
+  test = (-train)
+  modtr= glm(brozek ~ .^2, data=fat2, family=gaussian(link="identity")) 
+  predte=predict(modtr, Dat[test,])
+  MSE=mean((Dat$brozek[test]-predte)^2)
+  MAE=mean(abs(Dat$brozek[test]-predte))
+  Correlacion = cor(Dat$brozek[test],predte)
+  return(c(MSE,MAE,Correlacion))
+}
+
+glm2_pp = sapply(1:B,mod2, IndTrain=Partition, Dat=fat2)
+mean(glm2_pp[1])
+mean(glm2_pp[2])
+mean(glm2_pp[3])
+
+#glm3
+mod3=function(x, IndTrain, Dat){
+  train= IndTrain[,x]
+  test = (-train)
+  modtr= glm(forexp, data=fat2, family=gaussian(link="identity"))
+  predte=predict(modtr, Dat[test,])
+  MSE=mean((Dat$brozek[test]-predte)^2)
+  MAE=mean(abs(Dat$brozek[test]-predte))
+  Correlacion = cor(Dat$brozek[test],predte)
+  return(c(MSE,MAE,Correlacion))
+}
+
+glm3_pp = sapply(1:B,mod3, IndTrain=Partition, Dat=fat2)
+mean(glm3_pp[1])
+mean(glm3_pp[2])
+mean(glm3_pp[3])
 ```
 
+```{r elementos_glm_bic, include=FALSE}
+# penalización de datos con criterio bic
+pen=log(dim(fat2)[1]) 
+# Modelo más complejo
+upperfor=as.formula(  paste('~.',"+", paste('I(',xnames,'^2)',collapse = ' + ') ) ) 
+
+# glm1
+glm11 <- stepAIC(glm1, scope =list(upper = upperfor, lower = ~1), trace = FALSE,direction ="both", k=pen)
+
+# glm2
+glm22 <- stepAIC(glm2, scope =list(upper = upperfor, lower = ~1), trace = FALSE,direction ="both", k=pen)
+
+# glm3
+glm33 <- stepAIC(glm3, scope =list(upper = upperfor, lower = ~1), trace = FALSE,direction ="both", k=pen)
+```
+
+```{r poderp_glm_bic, include=FALSE}
+# glm1
+# semilla y repeticiones para poder predictivo
+set.seed(123)
+B=50
+
+# sampleo estratificado
+Partition1<- createDataPartition(fat2$brozek, p = .80, groups =4, list = FALSE, times = B)
+
+# Medici?n del poder predictivo
+# se repite selección de variables y penalización con el grupo train
+# forme: fórmula inicial, más chica
+# upform: formula final, más grande
+mod_bic1=function(x, IndTrain, Dat, forme, upform){
+  train= IndTrain[,x]
+  test = (-train)
+  assign("DatosAux", Dat[train,], envir = .GlobalEnv) #Cuidado stepAIC o step buscan la base de datos en el environment global cuando se usa scope 
+  modAux=lm(forme, data=DatosAux)
+  penAux=log(dim(DatosAux)[1])
+  modtr=stepAIC(modAux, scope =list(upper = upform, lower = ~1), trace = FALSE,direction ="both", k=penAux)
+  predte=predict(modtr, Dat[test,])
+  MSE=mean((Dat$brozek[test]-predte)^2)
+  MAE=mean(abs(Dat$brozek[test]-predte))
+  Correlacion = cor(Dat$brozek[test],predte)
+  return(c(MSE,MAE,Correlacion))
+}
+bic1_pp = sapply(1:B,mod_bic1, IndTrain=Partition1, Dat=fat2, forme=glm1, upform=upperfor)
+mean(bic1_pp[1])
+mean(bic1_pp[2])
+mean(bic1_pp[3])
+```
+
+```{r poderp, include=FALSE}
+# glm2
+# semilla y repeticiones para poder predictivo
+set.seed(123)
+B=50
+
+# sampleo estratificado
+Partition2<- createDataPartition(fat2$brozek, p = .80, groups =4, list = FALSE, times = B)
+
+# Medici?n del poder predictivo
+# se repite selección de variables y penalización con el grupo train
+# forme: fórmula inicial, más chica
+# upform: formula final, más grande
+mod_bic2=function(x, IndTrain, Dat, forme, upform){
+  train= IndTrain[,x]
+  test = (-train)
+  assign("DatosAux", Dat[train,], envir = .GlobalEnv) #Cuidado stepAIC o step buscan la base de datos en el environment global cuando se usa scope 
+  modAux=lm(forme, data=DatosAux)
+  penAux=log(dim(DatosAux)[1])
+  modtr=stepAIC(modAux, scope =list(upper = upform, lower = ~1), trace = FALSE,direction ="both", k=penAux)
+  predte=predict(modtr, Dat[test,])
+  MSE=mean((Dat$brozek[test]-predte)^2)
+  MAE=mean(abs(Dat$brozek[test]-predte))
+  Correlacion = cor(Dat$brozek[test],predte)
+  return(c(MSE,MAE,Correlacion))
+}
+bic2_pp = sapply(1:B,mod_bic2, IndTrain=Partition2, Dat=fat2, forme=glm2, upform=upperfor)
+mean(bic2_pp[1])
+mean(bic2_pp[2])
+mean(bic2_pp[3])
+```
+
+```{r poderp2, include=FALSE}
+# glm3
+# semilla y repeticiones para poder predictivo
+set.seed(123)
+B=50
+
+# sampleo estratificado
+Partition3<- createDataPartition(fat2$brozek, p = .80, groups =4, list = FALSE, times = B)
+
+# Medici?n del poder predictivo
+# se repite selección de variables y penalización con el grupo train
+# forme: fórmula inicial, más chica
+# upform: formula final, más grande
+mod_bic3=function(x, IndTrain, Dat, forme, upform){
+  train= IndTrain[,x]
+  test = (-train)
+  assign("DatosAux", Dat[train,], envir = .GlobalEnv) #Cuidado stepAIC o step buscan la base de datos en el environment global cuando se usa scope 
+  modAux=lm(forme, data=DatosAux)
+  penAux=log(dim(DatosAux)[1])
+  modtr=stepAIC(modAux, scope =list(upper = upform, lower = ~1), trace = FALSE,direction ="both", k=penAux)
+  predte=predict(modtr, Dat[test,])
+  MSE=mean((Dat$brozek[test]-predte)^2)
+  MAE=mean(abs(Dat$brozek[test]-predte))
+  Correlacion = cor(Dat$brozek[test],predte)
+  return(c(MSE,MAE,Correlacion))
+}
+bic3_pp = sapply(1:B,mod_bic3, IndTrain=Partition3, Dat=fat2, forme=glm3, upform=upperfor)
+mean(bic3_pp[1])
+mean(bic3_pp[2])
+mean(bic3_pp[3])
+```
+
+```{r elementos_glm_lasso1, include=FALSE}
+# glm1
+# Matriz diseño menos variable y 
+Xmod <- model.matrix(glm1, data=fat2)[,-1]
+# vector de y 
+Ymod <- fat2[,"brozek"] 
+# usando K-CV con base en poder predictivo
+# Con k-cv determinamos el mejor tuneo, es decir ellambda más eficiente
+set.seed(1)
+mod.lasso.tun=cv.glmnet(Xmod, Ymod, nfolds = 5, type.measure ="mse", gamma = 0, relax = FALSE, family = gaussian("identity"), nlambda = 50)
+# Summary de las dos cosas relevantes dichas arriba con su MSE = Measure
+print.cv.glmnet(mod.lasso.tun)
+# Da el mínimo lambda
+mod.lasso.tun$lambda.min 
+# coeficients
+cl1 = coef(mod.lasso.tun, s = "lambda.min")
+```
+
+```{r poderp_lasso1, include=FALSE}
+# glm1
+# Se va a replicar el valor de lambda (valor de hiperparámetros)
+# semilla y repeticiones para poder predictivo
+set.seed(123)
+B=50
+
+# sampleo estratificado
+Partition_l1<- createDataPartition(fat2$brozek, p = .80, groups =4, list = FALSE, times = B)
+
+mod_lasso1=function(x, IndTrain, Dat, forme){
+  train= IndTrain[,x]
+  test = (-train)
+  # crear matriz lasso
+  Xmod4ttotal = model.matrix(forme, data=Dat)[,-1]
+  # matriz x para el train
+  Xmod4t = Xmod4ttotal[train, ]
+  # matriz y 
+  Ymod4t = Dat[train,"brozek"] 
+  # tuneo con método de remuestreo de k-cv
+  mod4t.lasso.tun=cv.glmnet(Xmod4t, Ymod4t, nfolds = 5, type.measure ="mse", gamma = 0, relax = FALSE, family = gaussian("identity"), nlambda = 50)
+  # predecir con el lambda min que salió de arriba
+  predte=predict(mod4t.lasso.tun, newx = Xmod4ttotal[test,], type = "response", s = "lambda.min")
+  MSE=mean((Dat$brozek[test]-predte)^2)
+  MAE=mean(abs(Dat$brozek[test]-predte))
+  Correlacion = cor(Dat$brozek[test],predte)
+  return(c(MSE,MAE,Correlacion))
+}
+
+set.seed(1)
+lasso1_pp = sapply(1:B,mod_lasso1, IndTrain=Partition_l1, Dat=fat2, forme=glm1)
+mean(lasso1_pp[1])
+mean(lasso1_pp[2])
+mean(lasso1_pp[3])
+```
+
+```{r elementos_glm_lasso2, warning=FALSE, include=FALSE}
+# glm2
+# Matriz diseño menos variable y 
+Xmod2 <- model.matrix(glm2, data=fat2)[,-1]
+# vector de y 
+Ymod2 <- fat2[,"brozek"] 
+# usando K-CV con base en poder predictivo
+# Con k-cv determinamos el mejor tuneo, es decir ellambda más eficiente
+set.seed(1)
+mod.lasso.tun2=cv.glmnet(Xmod2, Ymod2, nfolds = 5, type.measure ="mse", gamma = 0, relax = FALSE, family = gaussian("identity"), nlambda = 50)
+# Summary de las dos cosas relevantes dichas arriba con su MSE = Measure
+print.cv.glmnet(mod.lasso.tun2)
+# Da el mínimo lambda
+mod.lasso.tun2$lambda.min 
+# coeficients
+cl2 = coef(mod.lasso.tun2, s = "lambda.min")
+```
+
+```{r poderp_lasso2, warning=FALSE, include=FALSE}
+# glm2
+# Se va a replicar el valor de lambda (valor de hiperparámetros)
+# semilla y repeticiones para poder predictivo
+set.seed(123)
+B=50
+
+# sampleo estratificado
+Partition_l2<- createDataPartition(fat2$brozek, p = .80, groups =4, list = FALSE, times = B)
+
+mod_lasso2=function(x, IndTrain, Dat, forme){
+  train= IndTrain[,x]
+  test = (-train)
+  # crear matriz lasso
+  Xmod4ttotal = model.matrix(forme, data=Dat)[,-1]
+  # matriz x para el train
+  Xmod4t = Xmod4ttotal[train, ]
+  # matriz y 
+  Ymod4t = Dat[train,"brozek"] 
+  # tuneo con método de remuestreo de k-cv
+  mod4t.lasso.tun=cv.glmnet(Xmod4t, Ymod4t, nfolds = 5, type.measure ="mse", gamma = 0, relax = FALSE, family = gaussian("identity"), nlambda = 50)
+  # predecir con el lambda min que salió de arriba
+  predte=predict(mod4t.lasso.tun, newx = Xmod4ttotal[test,], type = "response", s = "lambda.min")
+  MSE=mean((Dat$brozek[test]-predte)^2)
+  MAE=mean(abs(Dat$brozek[test]-predte))
+  Correlacion = cor(Dat$brozek[test],predte)
+  return(c(MSE,MAE,Correlacion))
+}
+
+set.seed(1)
+lasso2_pp = sapply(1:B,mod_lasso2, IndTrain=Partition_l2, Dat=fat2, forme=glm2)
+mean(lasso2_pp[1])
+mean(lasso2_pp[2])
+mean(lasso2_pp[3])
+```
+
+```{r elementos_glm_lasso3, warning=FALSE, include=FALSE}
+# glm3
+# Matriz diseño menos variable y 
+Xmod3 <- model.matrix(glm3, data=fat2)[,-1]
+# vector de y 
+Ymod3 <- fat2[,"brozek"] 
+# usando K-CV con base en poder predictivo
+# Con k-cv determinamos el mejor tuneo, es decir ellambda más eficiente
+set.seed(1)
+mod.lasso.tun3=cv.glmnet(Xmod3, Ymod3, nfolds = 5, type.measure ="mse", gamma = 0, relax = FALSE, family = gaussian("identity"), nlambda = 50)
+# Summary de las dos cosas relevantes dichas arriba con su MSE = Measure
+print.cv.glmnet(mod.lasso.tun3)
+# Da el mínimo lambda
+mod.lasso.tun3$lambda.min 
+# coeficients
+cl3 = coef(mod.lasso.tun3, s = "lambda.min")
+```
+
+```{r poderp_lasso3, warning=FALSE, include=FALSE}
+# glm2
+# Se va a replicar el valor de lambda (valor de hiperparámetros)
+# semilla y repeticiones para poder predictivo
+set.seed(123)
+B=50
+
+# sampleo estratificado
+Partition_l3<- createDataPartition(fat2$brozek, p = .80, groups =4, list = FALSE, times = B)
+
+mod_lasso3=function(x, IndTrain, Dat, forme){
+  train= IndTrain[,x]
+  test = (-train)
+  # crear matriz lasso
+  Xmod4ttotal = model.matrix(forme, data=Dat)[,-1]
+  # matriz x para el train
+  Xmod4t = Xmod4ttotal[train, ]
+  # matriz y 
+  Ymod4t = Dat[train,"brozek"] 
+  # tuneo con método de remuestreo de k-cv
+  mod4t.lasso.tun=cv.glmnet(Xmod4t, Ymod4t, nfolds = 5, type.measure ="mse", gamma = 0, relax = FALSE, family = gaussian("identity"), nlambda = 50)
+  # predecir con el lambda min que salió de arriba
+  predte=predict(mod4t.lasso.tun, newx = Xmod4ttotal[test,], type = "response", s = "lambda.min")
+  MSE=mean((Dat$brozek[test]-predte)^2)
+  MAE=mean(abs(Dat$brozek[test]-predte))
+  Correlacion = cor(Dat$brozek[test],predte)
+  return(c(MSE,MAE,Correlacion))
+}
+
+set.seed(1)
+lasso3_pp = sapply(1:B,mod_lasso3, IndTrain=Partition_l3, Dat=fat2, forme=glm3)
+mean(lasso3_pp[1])
+mean(lasso3_pp[2])
+mean(lasso3_pp[3])
+```
+
+```{r otro_glm, include=FALSE}
+# liga inversa con distribución Gamma y variables al cuadrado
+otro_glm=glm(forexp, data=fat2, family=Gamma(link="inverse"))
+# Matriz diseño menos variable y 
+Xmod4 <- model.matrix(otro_glm, data=fat2)[,-1]
+# vector de y 
+Ymod4 <- fat2[,"brozek"] 
+
+# usando K-CV con base en poder predictivo
+set.seed(2)
+# Con k-cv determinamos el mejor tuneo
+mod.lasso.tun4=cv.glmnet(Xmod4, Ymod4, nfolds = 5, type.measure ="mse", gamma = 0, relax = FALSE, family = gaussian("identity"), nlambda = 50)
+# Summary de las dos cosas relevantes dichas arriba con su MSE = measure
+print.cv.glmnet(mod.lasso.tun4)
+# Da el mínimo lambda
+mod.lasso.tun4$lambda.min 
+# coeficients
+cl4 = coef(mod.lasso.tun4, s = "lambda.min") 
+```
+
+```{r poderp_lasso4, warning=FALSE, include=FALSE}
+# glm2
+# Se va a replicar el valor de lambda (valor de hiperparámetros)
+# semilla y repeticiones para poder predictivo
+set.seed(123)
+B=50
+
+# sampleo estratificado
+Partition_l4<- createDataPartition(fat2$brozek, p = .80, groups =4, list = FALSE, times = B)
+
+mod_lasso4=function(x, IndTrain, Dat, forme){
+  train= IndTrain[,x]
+  test = (-train)
+  # crear matriz lasso
+  Xmod4ttotal = model.matrix(forme, data=Dat)[,-1]
+  # matriz x para el train
+  Xmod4t = Xmod4ttotal[train, ]
+  # matriz y 
+  Ymod4t = Dat[train,"brozek"] 
+  # tuneo con método de remuestreo de k-cv
+  mod4t.lasso.tun=cv.glmnet(Xmod4t, Ymod4t, nfolds = 5, type.measure ="mse", gamma = 0, relax = FALSE, family = gaussian("identity"), nlambda = 50)
+  # predecir con el lambda min que salió de arriba
+  predte=predict(mod4t.lasso.tun, newx = Xmod4ttotal[test,], type = "response", s = "lambda.min")
+  MSE=mean((Dat$brozek[test]-predte)^2)
+  MAE=mean(abs(Dat$brozek[test]-predte))
+  Correlacion = cor(Dat$brozek[test],predte)
+  return(c(MSE,MAE,Correlacion))
+}
+
+set.seed(1)
+lasso4_pp = sapply(1:B,mod_lasso4, IndTrain=Partition_l4, Dat=fat2, forme=otro_glm)
+mean(lasso4_pp[1])
+mean(lasso4_pp[2])
+mean(lasso4_pp[3])
+```
+
+```{r agrpando, include=FALSE}
+# Listas de variables
+variable_names <- c("glm1_pp", "glm2_pp", "glm3_pp", 
+                    "bic1_pp", "bic2_pp", "bic3_pp", 
+                    "lasso1_pp", "lasso2_pp", "lasso3_pp", "lasso4_pp")
+
+# Inicializar vectores vacíos
+vec_1 <- numeric()
+vec_2 <- numeric()
+vec_3 <- numeric()
+
+# Iterar sobre cada nombre de variable y agregar los elementos a los vectores correspondientes
+for (var in variable_names) {
+  vec_1 <- c(vec_1, get(var)[1])
+  vec_2 <- c(vec_2, get(var)[2])
+  vec_3 <- c(vec_3, get(var)[3])
+}
+
+```
+
+```{r include=FALSE}
+# nombres lasso coeficientes
+coef_matrix1 <- as.matrix(cl1)
+non_zero1 <- rownames(coef_matrix1)[coef_matrix1 != 0]
+
+coef_matrix2 <- as.matrix(cl2)
+non_zero2 <- rownames(coef_matrix2)[coef_matrix2 != 0]
+
+coef_matrix3 <- as.matrix(cl3)
+non_zero3 <- rownames(coef_matrix3)[coef_matrix3 != 0]
+
+coef_matrix4 <- as.matrix(cl4)
+non_zero4 <- rownames(coef_matrix4)[coef_matrix4 != 0]
+```
+
+```{r echo=FALSE}
+
+# variables bic
+v_bic1 <- "(Intercept),height,adipos,neck,abdom,wrist,I(brozek^2),I(abdom^2),I(height^2),I(wrist^2),I(weight^2)"   
+v_bic2 <- "(Intercept), age, weight, height, adipos, neck, chest, abdom, hip, thigh, knee, ankle, biceps, forearm, wrist, I(brozek^2), age*abdom, weight*chest, weight*abdom, weight*knee, weight*forearm, weight*wrist, height*chest, height*abdom, height*biceps, height*forearm, height*wrist, adipos*chest, adipos*forearm, adipos*wrist, neck*knee, chest*hip, chest*thigh, chest*knee, chest*ankle, knee*ankle, knee*wrist, adipos*thigh"
+v_bic3 <- "(Intercept), height, neck, abdom, hip, thigh, I(brozek^2), I(weight^2), I(height^2), I(adipos^2), I(abdom^2), I(hip^2), I(thigh^2)"
+
+v_l1 = "(Intercept), age, height, neck, abdom, thigh, biceps, forearm, wrist"
+v_l2 = "(Intercept), abdom, thigh, forearm, age*ankle, age*biceps, height*neck, height*wrist, neck*wrist"
+v_l3 = "(Intercept), age, height, neck, abdom, hip, thigh, ankle, biceps, forearm, wrist, I(brozek^2), I(age^2), I(weight^2), I(height^2), I(adipos^2), I(chest^2), I(abdom^2), I(knee^2), I(ankle^2), I(biceps^2), I(forearm^2), I(wrist^2)"
+v_l4 = "(Intercept), age, weight, height, neck, abdom, hip, thigh, ankle, biceps, forearm, wrist, I(brozek^2), I(age^2), I(weight^2), I(height^2), I(adipos^2), I(neck^2), I(chest^2), I(abdom^2), I(thigh^2), I(knee^2), I(ankle^2), I(biceps^2), I(forearm^2), I(wrist^2)"
 
 
+#
+modelos <- tibble(
+  Fórmula = c("brozek ~ ."," brozek ~ .^2","brozek ~ . + I(variables)^2","brozek ~ ."," brozek ~ .^2","brozek ~ . + I(variables)^2","brozek ~ ."," brozek ~ .^2","brozek ~ . + I(variables)^2","brozek ~ . + I(variables)^2"),
+  Selección = c("ninguna","ninguna","ninguna","step BIC","step BIC","step BIC","lasso","lasso","lasso","lasso"),
+  Variables = c("efectos principales","efectos principales e interacciones","efectos principales y variables al cuadrado",v_bic1,v_bic2,v_bic3,v_l1,v_l2,v_l3,v_l4),
+  MSE = vec_1,
+  MAE = vec_2,
+  Correlación = vec_3
+)
 
+
+# Utilizando kbl() para crear la tabla, con las funciones AIC y BIC aplicadas directamente
+# striped: Aplica un fondo rayado a las filas de la tabla para mejorar la legibilidad.
+# hover: Hace que las filas de la tabla cambien de color cuando pasas el cursor sobre ellas.
+# condensed: Reduce el espaciado entre las filas y las celdas de la tabla para hacerla más compacta.
+kbl(modelos, align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, latex_options = "hold_position") %>%
+  row_spec(0, color = "#FFB6C1", background = "gray")
+
+```
+
+```{r include=FALSE}
+# Concatenar todas las cadenas de variables
+todas_variables <- c(v_bic1, v_bic2, v_bic3, v_l1, v_l2, v_l3, v_l4)
+
+# Convertir las cadenas en vectores de nombres de variables
+nombres_variables <- unlist(strsplit(todas_variables, split = ",\\s*"))
+
+# Contar las ocurrencias de cada nombre
+conteo_nombres <- table(nombres_variables)
+
+# Encontrar los nombres más comunes (los 5 primeros)
+nombres_mas_comunes <- names(sort(conteo_nombres, decreasing = TRUE))[1:5]
+
+# Imprimir los nombres más comunes
+print(nombres_mas_comunes)
+```
+
+Tras revisar los resultados podemos concluir que:
+
+Ls variables que más veces aparecen entre los modelos tanto con selección de variables con BIC y Lasso son los siguientes: "abdom,height,neck,thigh"
+
+De los modelos que se probaron el que tuvo un mejor desempeño en cuanto a poder predictivo es el MLG con liga identidad y distribución Gaussiana, sin selección de variables, minimizando los errores al cuadrado y también la diferencia entre los valores quese predicen con los observados, además de alcanzar una alta correlación, mostramos sus valores a continuación:
+
++:-----------------------------:+:-------:+:-------------------------------------------:+:--------:+:---------:+:----------:+
+| brozek \~ . + I(variables)\^2 | ninguna | efectos principales y variables al cuadrado | MSE      | MSA       | Correlaión |
+|                               |         |                                             |          |           |            |
+|                               |         |                                             | 1.182450 | 0.7881561 | 0.9901339  |
++-------------------------------+---------+---------------------------------------------+----------+-----------+------------+
